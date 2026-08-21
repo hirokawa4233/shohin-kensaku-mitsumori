@@ -70,7 +70,7 @@ button {
 }
 
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: wait;
 }
 
@@ -96,6 +96,14 @@ button:disabled {
   color: #b00020;
   padding: 20px;
   border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.success-message {
+  background: #eef9f0;
+  color: #176b2c;
+  padding: 15px;
+  border-radius: 8px;
   margin-bottom: 20px;
 }
 
@@ -223,7 +231,6 @@ button:disabled {
 }
 
 @media (max-width: 800px) {
-
   .info-grid,
   .item-grid {
     grid-template-columns: 1fr;
@@ -237,7 +244,6 @@ button:disabled {
   .amount {
     text-align: left;
   }
-
 }
 </style>
 </head>
@@ -252,7 +258,6 @@ button:disabled {
 <div class="container">
 
   <div class="toolbar">
-
     <div class="count" id="count">
       見積依頼を読み込み中...
     </div>
@@ -263,22 +268,18 @@ button:disabled {
     >
       🔄 最新情報に更新
     </button>
-
   </div>
 
   <div id="error"></div>
-
   <div id="list"></div>
 
 </div>
 
-
 <script>
 
-
-// ==================================================
-// 見積依頼一覧を読み込む
-// ==================================================
+/* ========================================
+   見積依頼一覧を読み込む
+======================================== */
 
 async function loadEstimates() {
 
@@ -291,42 +292,32 @@ async function loadEstimates() {
   const error =
     document.getElementById("error");
 
-
   list.innerHTML = "";
-
   error.innerHTML = "";
-
 
   try {
 
     const response =
       await fetch("/api/estimates");
 
-
     const result =
       await response.json();
-
 
     if (
       !response.ok ||
       !result.success
     ) {
-
       throw new Error(
         result.message ||
         "見積依頼の取得に失敗しました"
       );
-
     }
-
 
     const estimates =
       result.estimates || [];
 
-
     count.textContent =
       `見積依頼 ${estimates.length}件`;
-
 
     if (!estimates.length) {
 
@@ -337,9 +328,7 @@ async function loadEstimates() {
       `;
 
       return;
-
     }
-
 
     list.innerHTML =
       estimates
@@ -347,43 +336,33 @@ async function loadEstimates() {
         .reverse()
         .map((estimate, index) => {
 
-
           const items =
             Array.isArray(estimate.items)
               ? estimate.items
               : [];
 
-
           let total = 0;
-
 
           const itemHtml =
             items.map(item => {
 
-
               const price =
                 Number(item.price) || 0;
-
 
               const qty =
                 Number(item.qty) || 0;
 
-
               const subtotal =
                 price * qty;
 
-
               total += subtotal;
 
-
               return `
-
                 <div class="item">
 
                   <div class="item-grid">
 
                     <div>
-
                       <span class="label">
                         品番
                       </span>
@@ -391,12 +370,9 @@ async function loadEstimates() {
                       <div class="item-code">
                         ${esc(item.code)}
                       </div>
-
                     </div>
 
-
                     <div>
-
                       <span class="label">
                         サイズ
                       </span>
@@ -404,12 +380,9 @@ async function loadEstimates() {
                       <div>
                         ${esc(item.size)}
                       </div>
-
                     </div>
 
-
                     <div>
-
                       <span class="label">
                         ブランド・パターン
                       </span>
@@ -418,12 +391,9 @@ async function loadEstimates() {
                         ${esc(item.brand)}
                         ${esc(item.pattern)}
                       </div>
-
                     </div>
 
-
                     <div>
-
                       <span class="label">
                         数量・金額
                       </span>
@@ -433,17 +403,14 @@ async function loadEstimates() {
                         /
                         ${fmt(subtotal)}円
                       </div>
-
                     </div>
 
                   </div>
 
                 </div>
-
               `;
 
             }).join("");
-
 
           const date =
             estimate.createdAt
@@ -452,11 +419,8 @@ async function loadEstimates() {
                 ).toLocaleString("ja-JP")
               : "";
 
-
           return `
-
             <div class="card">
-
 
               <div class="card-header">
 
@@ -464,19 +428,15 @@ async function loadEstimates() {
                   見積依頼 #${index + 1}
                 </div>
 
-
                 <div class="date">
                   📅 ${esc(date)}
                 </div>
 
               </div>
 
-
               <div class="card-body">
 
-
                 <div class="info-grid">
-
 
                   <div class="info-box">
 
@@ -490,7 +450,6 @@ async function loadEstimates() {
 
                   </div>
 
-
                   <div class="info-box">
 
                     <span class="label">
@@ -503,7 +462,6 @@ async function loadEstimates() {
 
                   </div>
 
-
                   <div class="info-box">
 
                     <span class="label">
@@ -515,7 +473,6 @@ async function loadEstimates() {
                     </div>
 
                   </div>
-
 
                   <div class="info-box">
 
@@ -531,14 +488,11 @@ async function loadEstimates() {
 
                   </div>
 
-
                 </div>
-
 
                 <div class="items-title">
                   🛒 見積依頼された商品
                 </div>
-
 
                 ${
                   itemHtml ||
@@ -549,21 +503,16 @@ async function loadEstimates() {
                   `
                 }
 
-
                 <div class="amount">
-
                   合計金額：
                   ${fmt(total)}円
-
                 </div>
-
 
                 <div class="delivery-area">
 
                   <label>
                     🚚 納期連絡
                   </label>
-
 
                   <input
                     type="text"
@@ -577,7 +526,6 @@ async function loadEstimates() {
                   >
 
                 </div>
-
 
                 <div class="actions">
 
@@ -595,36 +543,26 @@ async function loadEstimates() {
 
                 </div>
 
-
               </div>
 
             </div>
-
           `;
 
         })
         .join("");
 
-
   } catch (err) {
 
     console.error(err);
 
-
     count.textContent =
       "見積依頼を取得できませんでした";
 
-
     error.innerHTML = `
-
       <div class="error">
-
         見積依頼の読み込みに失敗しました。<br>
-
         ${esc(err.message)}
-
       </div>
-
     `;
 
   }
@@ -632,29 +570,24 @@ async function loadEstimates() {
 }
 
 
-
-// ==================================================
-// 納期保存 → PDF作成
-// ==================================================
+/* ========================================
+   納期保存 → PDF作成
+======================================== */
 
 async function createPdf(id) {
-
 
   const input =
     document.getElementById(
       `delivery-${id}`
     );
 
-
   const button =
     document.getElementById(
       `pdf-button-${id}`
     );
 
-
   const delivery =
     input?.value.trim() || "";
-
 
   if (!delivery) {
 
@@ -665,21 +598,13 @@ async function createPdf(id) {
     input?.focus();
 
     return;
-
   }
-
 
   const originalText =
     button?.textContent ||
     "📄 御見積書PDFを作成";
 
-
   try {
-
-
-    // ------------------------------------------
-    // ボタンを処理中にする
-    // ------------------------------------------
 
     if (button) {
 
@@ -691,18 +616,14 @@ async function createPdf(id) {
     }
 
 
-
-    // ------------------------------------------
-    // ① 納期を保存
-    // ------------------------------------------
+    /* ------------------------------------
+       ① 納期を保存
+    ------------------------------------ */
 
     const deliveryResponse =
       await fetch(
-        `/api/estimates/${encodeURIComponent(
-          id
-        )}/delivery`,
+        `/api/estimates/${encodeURIComponent(id)}/delivery`,
         {
-
           method: "PATCH",
 
           headers: {
@@ -711,16 +632,13 @@ async function createPdf(id) {
           },
 
           body: JSON.stringify({
-            delivery: delivery
+            delivery
           })
-
         }
       );
 
-
     const deliveryResult =
       await deliveryResponse.json();
-
 
     if (
       !deliveryResponse.ok ||
@@ -735,243 +653,141 @@ async function createPdf(id) {
     }
 
 
-
-    // ------------------------------------------
-    // ② PDFをサーバーで生成
-    // ------------------------------------------
+    /* ------------------------------------
+       ② サーバーでPDFを作成
+    ------------------------------------ */
 
     const pdfResponse =
       await fetch(
-        `/api/estimates/${encodeURIComponent(
-          id
-        )}/pdf`,
+        `/api/estimates/${encodeURIComponent(id)}/pdf`,
         {
-
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            delivery: delivery
-          })
-
+          method: "POST"
         }
       );
 
 
+    /*
+      server.js はPDFそのものではなく、
 
-    // ------------------------------------------
-    // ③ HTTPエラーの場合
-    // ------------------------------------------
-
-    if (!pdfResponse.ok) {
-
-
-      let message =
-        "御見積書PDFの作成に失敗しました";
-
-
-      try {
-
-        const errorResult =
-          await pdfResponse.json();
-
-
-        if (errorResult.message) {
-
-          message =
-            errorResult.message;
-
-        }
-
-      } catch (_) {
-
-        // JSONでない場合はそのまま
-
+      {
+        success: true,
+        fileName: "...pdf",
+        url: "/pdf/....pdf"
       }
 
+      を返すので、まずJSONとして受け取る。
+    */
 
-      throw new Error(message);
+    const pdfResult =
+      await pdfResponse.json();
+
+    if (
+      !pdfResponse.ok ||
+      !pdfResult.success
+    ) {
+
+      throw new Error(
+        pdfResult.message ||
+        "御見積書PDFの作成に失敗しました"
+      );
+
+    }
+
+    if (!pdfResult.url) {
+
+      throw new Error(
+        "PDFのURLを取得できませんでした"
+      );
 
     }
 
 
+    /* ------------------------------------
+       ③ 作成されたPDFを取得
+    ------------------------------------ */
 
-    // ------------------------------------------
-    // ④ 返ってきたデータを判定
-    //
-    // PDFそのものが返る場合
-    // JSONでPDF URLが返る場合
-    //
-    // 両方に対応
-    // ------------------------------------------
+    const fileResponse =
+      await fetch(pdfResult.url);
+
+    if (!fileResponse.ok) {
+
+      throw new Error(
+        "作成されたPDFを取得できませんでした"
+      );
+
+    }
+
 
     const contentType =
-      (
-        pdfResponse.headers.get(
-          "content-type"
-        ) || ""
-      ).toLowerCase();
-
-
-
-    // ==========================================
-    // パターンA
-    // PDFファイルそのものが返ってきた場合
-    // ==========================================
+      fileResponse.headers.get(
+        "content-type"
+      ) || "";
 
     if (
-      contentType.includes(
+      !contentType.includes(
         "application/pdf"
       )
     ) {
 
-
-      const blob =
-        await pdfResponse.blob();
-
-
-      const url =
-        window.URL.createObjectURL(
-          blob
-        );
-
-
-      const link =
-        document.createElement("a");
-
-
-      link.href = url;
-
-
-      link.download =
-        `御見積書_${id}.pdf`;
-
-
-      document.body.appendChild(
-        link
+      throw new Error(
+        "PDFファイルを正しく取得できませんでした"
       );
 
-
-      link.click();
-
-
-      link.remove();
-
-
-      setTimeout(() => {
-
-        window.URL.revokeObjectURL(
-          url
-        );
-
-      }, 10000);
-
-
     }
 
 
-    // ==========================================
-    // パターンB
-    // JSONでPDF URLが返ってきた場合
-    // ==========================================
-
-    else {
+    const blob =
+      await fileResponse.blob();
 
 
-      let result;
+    /* ------------------------------------
+       ④ PDFをダウンロード
+    ------------------------------------ */
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      pdfResult.fileName ||
+      `御見積書_${id}.pdf`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
 
 
-      try {
+    setTimeout(() => {
 
-        result =
-          await pdfResponse.json();
+      window.URL.revokeObjectURL(url);
 
-      } catch (_) {
+    }, 10000);
 
-        throw new Error(
-          "PDF作成結果を正しく受け取れませんでした"
-        );
-
-      }
-
-
-      if (
-        !result ||
-        !result.success
-      ) {
-
-        throw new Error(
-          result?.message ||
-          "御見積書PDFの作成に失敗しました"
-        );
-
-      }
-
-
-      if (!result.url) {
-
-        throw new Error(
-          "PDFのURLが取得できませんでした"
-        );
-
-      }
-
-
-      const pdfUrl =
-        new URL(
-          result.url,
-          window.location.origin
-        ).href;
-
-
-      // PDFを新しいタブで開く
-
-      const pdfWindow =
-        window.open(
-          pdfUrl,
-          "_blank"
-        );
-
-
-      // ポップアップがブロックされた場合
-
-      if (!pdfWindow) {
-
-        window.location.href =
-          pdfUrl;
-
-      }
-
-    }
-
-
-
-    // ------------------------------------------
-    // ⑤ 完了
-    // ------------------------------------------
 
     alert(
       "納期を保存し、御見積書PDFを作成しました。"
     );
 
 
-    // 最新情報に更新
+    /* ------------------------------------
+       ⑤ 最新状態に更新
+    ------------------------------------ */
 
     await loadEstimates();
 
 
   } catch (error) {
 
-
     console.error(
       "PDF作成エラー:",
       error
     );
-
 
     alert(
       "御見積書PDFの作成に失敗しました。\n\n" +
@@ -981,16 +797,10 @@ async function createPdf(id) {
 
   } finally {
 
-
-    // ------------------------------------------
-    // ボタンを元に戻す
-    // ------------------------------------------
-
     const currentButton =
       document.getElementById(
         `pdf-button-${id}`
       );
-
 
     if (currentButton) {
 
@@ -1007,16 +817,14 @@ async function createPdf(id) {
 }
 
 
-
-// ==================================================
-// 数字を3桁区切りにする
-// ==================================================
+/* ========================================
+   金額表示
+======================================== */
 
 function fmt(value) {
 
   const number =
     Number(value) || 0;
-
 
   return number.toLocaleString(
     "ja-JP"
@@ -1025,36 +833,24 @@ function fmt(value) {
 }
 
 
-
-// ==================================================
-// HTMLエスケープ
-// ==================================================
+/* ========================================
+   HTMLエスケープ
+======================================== */
 
 function esc(value) {
 
-  return String(
-    value ?? ""
-  )
+  return String(value ?? "")
     .replace(
       /[&<>"']/g,
       function(match) {
 
         return {
 
-          "&":
-            "&amp;",
-
-          "<":
-            "&lt;",
-
-          ">":
-            "&gt;",
-
-          '"':
-            "&quot;",
-
-          "'":
-            "&#39;"
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
 
         }[match];
 
@@ -1064,13 +860,11 @@ function esc(value) {
 }
 
 
-
-// ==================================================
-// 最初に見積依頼を読み込む
-// ==================================================
+/* ========================================
+   初回読み込み
+======================================== */
 
 loadEstimates();
-
 
 </script>
 
