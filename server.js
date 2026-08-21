@@ -38,13 +38,11 @@ const ESTIMATE_FILE = path.join(__dirname, "estimates.json");
 // PDF用フォント
 // ==============================
 
-// 日本語対応フォント
 const FONT_FILE = path.join(
   __dirname,
   "NotoSansJP-Regular.otf"
 );
 
-// Noto CJK公式リポジトリの日本語サブセット
 const FONT_URL =
   "https://github.com/notofonts/noto-cjk/raw/main/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf";
 
@@ -57,7 +55,8 @@ function downloadFile(url, destination) {
 
   return new Promise((resolve, reject) => {
 
-    const file = fs.createWriteStream(destination);
+    const file =
+      fs.createWriteStream(destination);
 
     https.get(url, (response) => {
 
@@ -100,9 +99,7 @@ function downloadFile(url, destination) {
       response.pipe(file);
 
       file.on("finish", () => {
-
         file.close(resolve);
-
       });
 
     }).on("error", (error) => {
@@ -159,12 +156,10 @@ function loadProducts() {
 
   }
 
-  const workbook = XLSX.readFile(
-    EXCEL_FILE,
-    {
+  const workbook =
+    XLSX.readFile(EXCEL_FILE, {
       cellDates: false
-    }
-  );
+    });
 
   if (
     !workbook.SheetNames.includes(
@@ -225,7 +220,6 @@ function loadProducts() {
       });
 
   return products;
-
 }
 
 
@@ -586,8 +580,7 @@ app.patch(
 function toNumber(value) {
 
   if (
-    typeof value ===
-    "number"
+    typeof value === "number"
   ) {
 
     return value;
@@ -630,9 +623,7 @@ function yen(value) {
 // 日付表示
 // ==============================
 
-function formatDate(
-  iso
-) {
+function formatDate(iso) {
 
   if (!iso) {
     return "";
@@ -661,6 +652,38 @@ function formatDate(
       minute: "2-digit"
     }
   );
+
+}
+
+
+// ==============================
+// お客様名
+// 「様」を自動で付ける
+// ==============================
+
+function customerName(
+  company
+) {
+
+  const name =
+    String(
+      company || ""
+    ).trim();
+
+  if (!name) {
+    return "";
+  }
+
+  // すでに「様」が付いている場合は二重にしない
+  if (
+    name.endsWith("様")
+  ) {
+
+    return name;
+
+  }
+
+  return `${name} 様`;
 
 }
 
@@ -701,9 +724,9 @@ app.post(
       }
 
 
-      // ------------------------------
-      // 管理画面から納期が送られた場合
-      // ------------------------------
+      // ==============================
+      // 納期が送られてきた場合は保存
+      // ==============================
 
       if (
         req.body &&
@@ -726,24 +749,24 @@ app.post(
       }
 
 
-      // ------------------------------
+      // ==============================
       // 日本語フォント準備
-      // ------------------------------
+      // ==============================
 
       await ensureJapaneseFont();
 
 
-      // ------------------------------
+      // ==============================
       // PDFファイル名
-      // ------------------------------
+      // ==============================
 
       const fileName =
         `御見積書_${estimate.id}.pdf`;
 
 
-      // ------------------------------
+      // ==============================
       // PDFレスポンス
-      // ------------------------------
+      // ==============================
 
       res.setHeader(
         "Content-Type",
@@ -756,9 +779,9 @@ app.post(
       );
 
 
-      // ------------------------------
+      // ==============================
       // PDF作成
-      // ------------------------------
+      // ==============================
 
       const doc =
         new PDFDocument({
@@ -796,9 +819,9 @@ app.post(
       );
 
 
-      // ------------------------------
+      // ==============================
       // タイトル
-      // ------------------------------
+      // ==============================
 
       doc
         .fontSize(24)
@@ -812,9 +835,9 @@ app.post(
       doc.moveDown(1);
 
 
-      // ------------------------------
+      // ==============================
       // 見積番号・受付日時
-      // ------------------------------
+      // ==============================
 
       doc
         .fontSize(10)
@@ -838,9 +861,9 @@ app.post(
       doc.moveDown(1);
 
 
-      // ------------------------------
+      // ==============================
       // お客様情報
-      // ------------------------------
+      // ==============================
 
       doc
         .fontSize(13)
@@ -853,16 +876,22 @@ app.post(
 
       doc.moveDown(0.4);
 
+
+      // ★ここで「様」を付ける
       doc
         .fontSize(11)
         .text(
-          `会社名・氏名：${estimate.company || ""}`
+          `会社名・氏名：${customerName(
+            estimate.company
+          )}`
         );
+
 
       doc
         .text(
           `電話番号：${estimate.phone || ""}`
         );
+
 
       doc
         .text(
@@ -872,9 +901,9 @@ app.post(
       doc.moveDown(1);
 
 
-      // ------------------------------
+      // ==============================
       // 商品一覧
-      // ------------------------------
+      // ==============================
 
       doc
         .fontSize(13)
@@ -899,7 +928,9 @@ app.post(
       let total = 0;
 
 
+      // ==============================
       // 表の見出し
+      // ==============================
 
       doc
         .fontSize(9)
@@ -946,7 +977,6 @@ app.post(
 
 
       // 横線
-
       doc
         .moveTo(
           50,
@@ -962,9 +992,9 @@ app.post(
       doc.moveDown(0.5);
 
 
-      // ------------------------------
+      // ==============================
       // 商品行
-      // ------------------------------
+      // ==============================
 
       items.forEach(
         (item) => {
@@ -978,14 +1008,17 @@ app.post(
               ) || 1
             );
 
+
           const unitPrice =
             toNumber(
               item.price
             );
 
+
           const itemTotal =
             unitPrice *
             quantity;
+
 
           total +=
             itemTotal;
@@ -1072,9 +1105,9 @@ app.post(
       );
 
 
-      // ------------------------------
+      // ==============================
       // 合計金額
-      // ------------------------------
+      // ==============================
 
       doc.moveDown(0.5);
 
@@ -1088,9 +1121,9 @@ app.post(
         );
 
 
-      // ------------------------------
+      // ==============================
       // 納期
-      // ------------------------------
+      // ==============================
 
       doc.moveDown(1.5);
 
@@ -1113,9 +1146,9 @@ app.post(
         );
 
 
-      // ------------------------------
+      // ==============================
       // 備考
-      // ------------------------------
+      // ==============================
 
       doc.moveDown(1.2);
 
@@ -1138,9 +1171,9 @@ app.post(
         );
 
 
-      // ------------------------------
+      // ==============================
       // フッター
-      // ------------------------------
+      // ==============================
 
       doc
         .fontSize(9)
@@ -1155,9 +1188,9 @@ app.post(
         );
 
 
-      // ------------------------------
+      // ==============================
       // PDF終了
-      // ------------------------------
+      // ==============================
 
       doc.end();
 
