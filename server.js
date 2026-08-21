@@ -16,11 +16,17 @@ app.use(express.urlencoded({ extended: true }));
 // サイト本体
 app.use(express.static(__dirname));
 
+// ==============================
 // Excel商品マスタ
+// ==============================
+
 const EXCEL_FILE = path.join(__dirname, "価格表.xlsm");
 const PRODUCT_SHEET = "Sheet2";
 
+// ==============================
 // 見積データ保存先
+// ==============================
+
 const ESTIMATE_FILE = path.join(__dirname, "estimates.json");
 
 
@@ -30,9 +36,10 @@ const ESTIMATE_FILE = path.join(__dirname, "estimates.json");
 // ==============================
 
 function loadProducts() {
+
   if (!fs.existsSync(EXCEL_FILE)) {
     throw new Error(
-      "価格表.xlsm が見つかりません。GitHubのリポジトリ直下に価格表.xlsmを置いてください。"
+      "価格表.xlsm が見つかりません。"
     );
   }
 
@@ -48,7 +55,6 @@ function loadProducts() {
 
   const sheet = workbook.Sheets[PRODUCT_SHEET];
 
-  // 1行目を見出しとしてオブジェクト化
   const rows = XLSX.utils.sheet_to_json(sheet, {
     defval: "",
     raw: true
@@ -64,9 +70,12 @@ function loadProducts() {
       pattern: row["パターン"]
     }))
     .filter((p) => {
+
       return Object.values(p).some(
-        (value) => String(value ?? "").trim() !== ""
+        (value) =>
+          String(value ?? "").trim() !== ""
       );
+
     });
 
   return products;
@@ -78,7 +87,9 @@ function loadProducts() {
 // ==============================
 
 app.get("/api/products", (req, res) => {
+
   try {
+
     const products = loadProducts();
 
     res.json({
@@ -86,74 +97,293 @@ app.get("/api/products", (req, res) => {
       count: products.length,
       products
     });
+
   } catch (error) {
-    console.error("商品データ読み込みエラー:", error);
+
+    console.error(
+      "商品データ読み込みエラー:",
+      error
+    );
 
     res.status(500).json({
       success: false,
       message: error.message
     });
+
   }
+
 });
 
 
 // ==============================
-// 見積依頼API
+// 見積データ読み込み
 // ==============================
 
-app.post("/api/estimate", (req, res) => {
+function loadEstimates() {
+
+  if (!fs.existsSync(ESTIMATE_FILE)) {
+    return [];
+  }
+
   try {
-    const body = req.body || {};
 
-    const estimate = {
-      id: Date.now(),
-      company: body.company || "",
-      phone: body.phone || "",
-      email: body.email || "",
-      note: body.note || "",
-      items: Array.isArray(body.items) ? body.items : [],
-      createdAt: new Date().toISOString()
-    };
-
-    let estimates = [];
-
-    if (fs.existsSync(ESTIMATE_FILE)) {
-      try {
-        estimates = JSON.parse(
-          fs.readFileSync(ESTIMATE_FILE, "utf8")
-        );
-
-        if (!Array.isArray(estimates)) {
-          estimates = [];
-        }
-      } catch (error) {
-        estimates = [];
-      }
-    }
-
-    estimates.push(estimate);
-
-    fs.writeFileSync(
+    const data = fs.readFileSync(
       ESTIMATE_FILE,
-      JSON.stringify(estimates, null, 2),
       "utf8"
     );
 
-    console.log("見積依頼を受け付けました");
+    const estimates = JSON.parse(data);
+
+    if (!Array.isArray(estimates)) {
+      return [];
+    }
+
+    return estimates;
+
+  } catch (error) {
+
+    console.error(
+      "見積データ読み込みエラー:",
+      error
+    );
+
+    return [];
+  }
+}
+
+
+// ==============================
+// 見積データ保存
+// ==============================
+
+function saveEstimates(estimates) {
+
+  fs.writeFileSync(
+    ESTIMATE_FILE,
+    JSON.stringify(
+      estimates,
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+}
+
+
+// ==============================
+// 見積依頼受付API
+// ==============================
+
+app.post("/api/estimate", (req, res) => {
+
+  try {
+
+    const body = req.body || {};
+
+    const estimate = {
+
+      id: Date.now(),
+
+      company:
+        body.company || "",
+
+      phone:
+        body.phone || "",
+
+      email:
+        body.email || "",
+
+      note:
+        body.note || "",
+
+      items:
+        Array.isArray(body.items)
+          ? body.items
+          : [],
+
+      // 納期連絡
+      delivery:
+        body.delivery || "",
+
+      createdAt:
+        new Date().toISOString()
+
+    };
+
+    const estimates =
+      loadEstimates();
+
+    estimates.push(estimate);
+
+    saveEstimates(estimates);
+
+    console.log(
+      "見積依頼を受け付けました:",
+      estimate.id
+    );
 
     res.json({
+
       success: true,
-      message: "見積依頼を受け付けました"
+
+      message:
+        "見積依頼を受け付けました",
+
+      id:
+        estimate.id
+
     });
+
   } catch (error) {
-    console.error("見積保存エラー:", error);
+
+    console.error(
+      "見積保存エラー:",
+      error
+    );
 
     res.status(500).json({
+
       success: false,
-      message: "見積依頼の保存に失敗しました"
+
+      message:
+        "見積依頼の保存に失敗しました"
+
     });
+
   }
+
 });
+
+
+// ==============================
+// 管理画面用
+// 見積依頼一覧取得API
+// ==============================
+
+app.get("/api/estimates", (req, res) => {
+
+  try {
+
+    const estimates =
+      loadEstimates();
+
+    res.json({
+
+      success: true,
+
+      count:
+        estimates.length,
+
+      estimates
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "見積一覧取得エラー:",
+      error
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message:
+        "見積依頼の取得に失敗しました"
+
+    });
+
+  }
+
+});
+
+
+// ==============================
+// 納期連絡を保存するAPI
+// ==============================
+
+app.patch(
+  "/api/estimates/:id/delivery",
+  (req, res) => {
+
+    try {
+
+      const id =
+        Number(req.params.id);
+
+      const delivery =
+        String(
+          req.body?.delivery || ""
+        ).trim();
+
+      const estimates =
+        loadEstimates();
+
+      const estimate =
+        estimates.find(
+          (item) =>
+            Number(item.id) === id
+        );
+
+      if (!estimate) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "指定された見積依頼が見つかりません"
+
+        });
+
+      }
+
+      estimate.delivery =
+        delivery;
+
+      estimate.deliveryUpdatedAt =
+        new Date().toISOString();
+
+      saveEstimates(estimates);
+
+      console.log(
+        "納期連絡を更新しました:",
+        id
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "納期連絡を保存しました",
+
+        estimate
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "納期保存エラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "納期連絡の保存に失敗しました"
+
+      });
+
+    }
+
+  }
+);
 
 
 // ==============================
@@ -161,7 +391,17 @@ app.post("/api/estimate", (req, res) => {
 // ==============================
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Excel: ${EXCEL_FILE}`);
-  console.log(`商品シート: ${PRODUCT_SHEET}`);
+
+  console.log(
+    `Server running on port ${PORT}`
+  );
+
+  console.log(
+    `Excel: ${EXCEL_FILE}`
+  );
+
+  console.log(
+    `商品シート: ${PRODUCT_SHEET}`
+  );
+
 });
