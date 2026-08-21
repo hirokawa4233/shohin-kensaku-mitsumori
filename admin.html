@@ -69,6 +69,11 @@ button {
   font-size: 14px;
 }
 
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .reload {
   background: #0b3570;
   color: white;
@@ -176,6 +181,7 @@ button {
 .amount {
   text-align: right;
   font-weight: bold;
+  margin-top: 15px;
 }
 
 .delivery-area {
@@ -214,6 +220,14 @@ button {
 
 .pdf-button:hover {
   background: #082956;
+}
+
+.success-message {
+  background: #eef9f0;
+  color: #176b2c;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 800px) {
@@ -454,6 +468,7 @@ async function loadEstimates() {
                 <input
                   type="text"
                   id="delivery-${esc(String(estimate.id))}"
+                  value="${esc(estimate.delivery || "")}"
                   placeholder="例：ご注文確定後、7営業日程度"
                 >
 
@@ -463,6 +478,7 @@ async function loadEstimates() {
 
                 <button
                   class="pdf-button"
+                  id="pdf-button-${esc(String(estimate.id))}"
                   onclick="createPdf('${esc(String(estimate.id))}')"
                 >
                   📄 御見積書PDFを作成
@@ -497,29 +513,228 @@ async function loadEstimates() {
 }
 
 
-function createPdf(id) {
+/*
+========================================
+納期保存 → PDF生成
+========================================
+*/
+
+async function createPdf(id) {
+
+  const input =
+    document.getElementById(`delivery-${id}`);
+
+  const button =
+    document.getElementById(`pdf-button-${id}`);
 
   const delivery =
-    document.getElementById(
-      `delivery-${id}`
-    )?.value || "";
+    input?.value.trim() || "";
 
-  if (!delivery.trim()) {
+  if (!delivery) {
 
     alert(
       "納期連絡を入力してください。"
     );
 
+    input?.focus();
+
     return;
   }
 
-  /*
-    PDF作成機能は次の段階で接続します。
-  */
+  const originalText =
+    button?.textContent ||
+    "📄 御見積書PDFを作成";
 
-  alert(
-    "納期を保存して、御見積書PDFを作成する機能をこれから接続します。"
-  );
+  try {
+
+    if (button) {
+      button.disabled = true;
+      button.textContent =
+        "⏳ PDFを作成しています...";
+    }
+
+
+    /*
+    ----------------------------------------
+    ① 納期を保存
+    ----------------------------------------
+    */
+
+    const deliveryResponse =
+      await fetch(
+        `/api/estimates/${encodeURIComponent(id)}/delivery`,
+        {
+          method: "PATCH",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            delivery
+          })
+        }
+      );
+
+    const deliveryResult =
+      await deliveryResponse.json();
+
+    if (
+      !deliveryResponse.ok ||
+      !deliveryResult.success
+    ) {
+
+      throw new Error(
+        deliveryResult.message ||
+        "納期連絡の保存に失敗しました"
+      );
+
+    }
+
+
+    /*
+    ----------------------------------------
+    ② PDFをサーバーで生成
+    ----------------------------------------
+    */
+
+    const pdfResponse =
+      await fetch(
+        `/api/estimates/${encodeURIComponent(id)}/pdf`,
+        {
+          method: "POST"
+        }
+      );
+
+
+    /*
+    PDFではなくエラーJSONが返ってきた場合
+    */
+
+    if (!pdfResponse.ok) {
+
+      let message =
+        "御見積書PDFの作成に失敗しました";
+
+      try {
+
+        const errorResult =
+          await pdfResponse.json();
+
+        if (errorResult.message) {
+          message =
+            errorResult.message;
+        }
+
+      } catch (_) {
+        // JSONでない場合はそのまま
+      }
+
+      throw new Error(message);
+    }
+
+
+    /*
+    ----------------------------------------
+    ③ PDFデータを取得
+    ----------------------------------------
+    */
+
+    const contentType =
+      pdfResponse.headers.get(
+        "content-type"
+      ) || "";
+
+    if (!contentType.includes("application/pdf")) {
+
+      throw new Error(
+        "PDFファイルが正しく生成されませんでした"
+      );
+
+    }
+
+    const blob =
+      await pdfResponse.blob();
+
+
+    /*
+    ----------------------------------------
+    ④ PDFをブラウザで開く
+    ----------------------------------------
+    */
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const company =
+      "御見積書";
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      `${company}_${id}.pdf`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 10000);
+
+
+    alert(
+      "納期を保存し、御見積書PDFを作成しました。"
+    );
+
+
+    /*
+    最新状態を再読み込み
+    */
+
+    await loadEstimates();
+
+  } catch (error) {
+
+    console.error(
+      "PDF作成エラー:",
+      error
+    );
+
+    alert(
+      "御見積書PDFの作成に失敗しました。\n\n" +
+      error.message
+    );
+
+  } finally {
+
+    /*
+    ボタンを元に戻す
+    */
+
+    const currentButton =
+      document.getElementById(
+        `pdf-button-${id}`
+      );
+
+    if (currentButton) {
+
+      currentButton.disabled =
+        false;
+
+      currentButton.textContent =
+        originalText;
+
+    }
+
+  }
 
 }
 
