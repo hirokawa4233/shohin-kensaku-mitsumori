@@ -3,14 +3,14 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 const PDFDocument = require("pdfkit");
-const https = require("https");
 
 const app = express();
+
 const PORT = process.env.PORT || 3000;
 
-// ==============================
+// ========================================
 // 基本設定
-// ==============================
+// ========================================
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -18,207 +18,90 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 
-// ==============================
-// Excel商品マスタ
-// ==============================
+// ========================================
+// Excel
+// ========================================
 
 const EXCEL_FILE = path.join(__dirname, "価格表.xlsm");
 const PRODUCT_SHEET = "Sheet2";
 
 
-// ==============================
-// 見積データ保存先
-// ==============================
+// ========================================
+// 見積データ
+// ========================================
 
-const ESTIMATE_FILE = path.join(__dirname, "estimates.json");
-
-
-// ==============================
-// PDF保存先
-// ==============================
-
-const PDF_DIR = path.join(__dirname, "pdf");
-
-if (!fs.existsSync(PDF_DIR)) {
-  fs.mkdirSync(PDF_DIR, { recursive: true });
-}
-
-
-// ==============================
-// 日本語フォント
-// ==============================
-
-const FONT_DIR = path.join(__dirname, "fonts");
-const JAPANESE_FONT = path.join(
-  FONT_DIR,
-  "NotoSansJP-Regular.ttf"
+const ESTIMATE_FILE = path.join(
+  __dirname,
+  "estimates.json"
 );
 
-if (!fs.existsSync(FONT_DIR)) {
-  fs.mkdirSync(FONT_DIR, { recursive: true });
-}
 
+// ========================================
+// PDF
+// ========================================
 
-// ==============================
-// 日本語フォントを取得
-// ==============================
+const PDF_DIR = path.join(
+  __dirname,
+  "pdf"
+);
 
-function downloadJapaneseFont() {
-
-  return new Promise((resolve, reject) => {
-
-    if (fs.existsSync(JAPANESE_FONT)) {
-      console.log(
-        "PDF font:",
-        JAPANESE_FONT
-      );
-
-      return resolve();
-    }
-
-    console.log(
-      "日本語フォントをダウンロードしています..."
-    );
-
-    const fontUrl =
-      "https://github.com/google/fonts/raw/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf";
-
-    const file =
-      fs.createWriteStream(
-        JAPANESE_FONT
-      );
-
-    https.get(
-      fontUrl,
-      (response) => {
-
-        if (
-          response.statusCode >= 300 &&
-          response.statusCode < 400 &&
-          response.headers.location
-        ) {
-
-          file.close();
-
-          if (fs.existsSync(JAPANESE_FONT)) {
-            fs.unlinkSync(JAPANESE_FONT);
-          }
-
-          https.get(
-            response.headers.location,
-            (redirectResponse) => {
-
-              redirectResponse.pipe(file);
-
-              file.on(
-                "finish",
-                () => {
-
-                  file.close();
-
-                  console.log(
-                    "日本語フォント取得完了:",
-                    JAPANESE_FONT
-                  );
-
-                  resolve();
-
-                }
-              );
-
-            }
-          ).on(
-            "error",
-            (error) => {
-
-              file.close();
-
-              if (
-                fs.existsSync(JAPANESE_FONT)
-              ) {
-                fs.unlinkSync(
-                  JAPANESE_FONT
-                );
-              }
-
-              reject(error);
-
-            }
-          );
-
-          return;
-        }
-
-
-        if (
-          response.statusCode !== 200
-        ) {
-
-          file.close();
-
-          if (
-            fs.existsSync(JAPANESE_FONT)
-          ) {
-            fs.unlinkSync(
-              JAPANESE_FONT
-            );
-          }
-
-          return reject(
-            new Error(
-              `フォント取得失敗: HTTP ${response.statusCode}`
-            )
-          );
-
-        }
-
-
-        response.pipe(file);
-
-        file.on(
-          "finish",
-          () => {
-
-            file.close();
-
-            console.log(
-              "日本語フォント取得完了:",
-              JAPANESE_FONT
-            );
-
-            resolve();
-
-          }
-        );
-
-      }
-    ).on(
-      "error",
-      (error) => {
-
-        file.close();
-
-        if (
-          fs.existsSync(JAPANESE_FONT)
-        ) {
-          fs.unlinkSync(
-            JAPANESE_FONT
-          );
-        }
-
-        reject(error);
-
-      }
-    );
-
+if (!fs.existsSync(PDF_DIR)) {
+  fs.mkdirSync(PDF_DIR, {
+    recursive: true
   });
-
 }
 
 
-// ==============================
-// Excelから商品データを読み込む
-// ==============================
+// ========================================
+// 日本語フォント
+// ★ ダウンロードしない
+// ========================================
+
+const FONT_CANDIDATES = [
+  path.join(
+    __dirname,
+    "fonts",
+    "NotoSansJP-Regular.ttf"
+  ),
+
+  "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
+
+  "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+
+  "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+];
+
+
+function findJapaneseFont() {
+
+  for (const font of FONT_CANDIDATES) {
+
+    if (fs.existsSync(font)) {
+
+      console.log(
+        "Japanese font:",
+        font
+      );
+
+      return font;
+    }
+  }
+
+  console.error(
+    "Japanese font: NOT FOUND"
+  );
+
+  return null;
+}
+
+
+const JAPANESE_FONT =
+  findJapaneseFont();
+
+
+// ========================================
+// 商品データ読み込み
+// ========================================
 
 function loadProducts() {
 
@@ -227,16 +110,12 @@ function loadProducts() {
     throw new Error(
       "価格表.xlsm が見つかりません。"
     );
-
   }
 
   const workbook =
-    XLSX.readFile(
-      EXCEL_FILE,
-      {
-        cellDates: false
-      }
-    );
+    XLSX.readFile(EXCEL_FILE, {
+      cellDates: false
+    });
 
   if (
     !workbook.SheetNames.includes(
@@ -247,13 +126,10 @@ function loadProducts() {
     throw new Error(
       `Excelに「${PRODUCT_SHEET}」シートがありません。`
     );
-
   }
 
   const sheet =
-    workbook.Sheets[
-      PRODUCT_SHEET
-    ];
+    workbook.Sheets[PRODUCT_SHEET];
 
   const rows =
     XLSX.utils.sheet_to_json(
@@ -264,49 +140,51 @@ function loadProducts() {
       }
     );
 
-  const products =
-    rows
-      .map(
-        (row) => ({
+  return rows
+    .map((row) => {
 
-          code:
-            row["品番"],
+      return {
 
-          size:
-            row["サイズ"],
+        code:
+          row["品番"],
 
-          a:
-            row["A表"],
+        size:
+          row["サイズ"],
 
-          price:
-            row["価格"],
+        a:
+          row["A表"],
 
-          brand:
-            row["ブランド"],
+        price:
+          row["価格"],
 
-          pattern:
-            row["パターン"]
+        brand:
+          row["ブランド"],
 
-        })
-      )
-      .filter(
-        (p) =>
-          Object.values(p).some(
-            (value) =>
-              String(
-                value ?? ""
-              ).trim() !== ""
-          )
-      );
+        pattern:
+          row["パターン"]
 
-  return products;
+      };
+
+    })
+    .filter((product) => {
+
+      return Object.values(product)
+        .some((value) => {
+
+          return String(
+            value ?? ""
+          ).trim() !== "";
+
+        });
+
+    });
 
 }
 
 
-// ==============================
+// ========================================
 // 商品一覧API
-// ==============================
+// ========================================
 
 app.get(
   "/api/products",
@@ -350,9 +228,9 @@ app.get(
 );
 
 
-// ==============================
+// ========================================
 // 見積データ読み込み
-// ==============================
+// ========================================
 
 function loadEstimates() {
 
@@ -361,6 +239,7 @@ function loadEstimates() {
       ESTIMATE_FILE
     )
   ) {
+
     return [];
   }
 
@@ -380,6 +259,7 @@ function loadEstimates() {
         estimates
       )
     ) {
+
       return [];
     }
 
@@ -393,15 +273,14 @@ function loadEstimates() {
     );
 
     return [];
-
   }
 
 }
 
 
-// ==============================
+// ========================================
 // 見積データ保存
-// ==============================
+// ========================================
 
 function saveEstimates(
   estimates
@@ -424,9 +303,9 @@ function saveEstimates(
 }
 
 
-// ==============================
-// 見積依頼受付API
-// ==============================
+// ========================================
+// 見積依頼受付
+// ========================================
 
 app.post(
   "/api/estimate",
@@ -519,9 +398,9 @@ app.post(
 );
 
 
-// ==============================
-// 見積依頼一覧API
-// ==============================
+// ========================================
+// 見積一覧
+// ========================================
 
 app.get(
   "/api/estimates",
@@ -565,9 +444,9 @@ app.get(
 );
 
 
-// ==============================
-// 納期連絡保存
-// ==============================
+// ========================================
+// 納期保存
+// ========================================
 
 app.patch(
   "/api/estimates/:id/delivery",
@@ -590,20 +469,26 @@ app.patch(
 
       const estimate =
         estimates.find(
-          (item) =>
-            Number(item.id) === id
+          (item) => {
+
+            return Number(
+              item.id
+            ) === id;
+
+          }
         );
 
       if (!estimate) {
 
-        return res.status(404).json({
+        return res.status(404)
+          .json({
 
-          success: false,
+            success: false,
 
-          message:
-            "指定された見積依頼が見つかりません"
+            message:
+              "指定された見積依頼が見つかりません"
 
-        });
+          });
 
       }
 
@@ -655,9 +540,9 @@ app.patch(
 );
 
 
-// ==============================
-// 金額フォーマット
-// ==============================
+// ========================================
+// 数値フォーマット
+// ========================================
 
 function formatNumber(
   value
@@ -672,54 +557,90 @@ function formatNumber(
 }
 
 
-// ==============================
-// 御見積書PDF作成API
-// ==============================
+// ========================================
+// PDF作成
+// ========================================
 
 app.post(
   "/api/estimates/:id/pdf",
-  async (req, res) => {
+  (req, res) => {
+
+    const id =
+      Number(
+        req.params.id
+      );
+
+    console.log(
+      "PDF作成リクエスト:",
+      id
+    );
 
     try {
 
-      // --------------------------
-      // 日本語フォント確認
-      // --------------------------
+      // --------------------------------
+      // フォント確認
+      // --------------------------------
 
-      await downloadJapaneseFont();
+      if (!JAPANESE_FONT) {
 
-
-      const id =
-        Number(
-          req.params.id
+        console.error(
+          "日本語フォントが見つかりません"
         );
+
+        return res.status(500)
+          .json({
+
+            success: false,
+
+            message:
+              "日本語フォントが見つかりません"
+
+          });
+
+      }
+
+      console.log(
+        "使用フォント:",
+        JAPANESE_FONT
+      );
+
+
+      // --------------------------------
+      // 見積データ
+      // --------------------------------
 
       const estimates =
         loadEstimates();
 
       const estimate =
         estimates.find(
-          (item) =>
-            Number(item.id) === id
+          (item) => {
+
+            return Number(
+              item.id
+            ) === id;
+
+          }
         );
 
       if (!estimate) {
 
-        return res.status(404).json({
+        return res.status(404)
+          .json({
 
-          success: false,
+            success: false,
 
-          message:
-            "指定された見積依頼が見つかりません"
+            message:
+              "指定された見積依頼が見つかりません"
 
-        });
+          });
 
       }
 
 
-      // --------------------------
+      // --------------------------------
       // 納期
-      // --------------------------
+      // --------------------------------
 
       const delivery =
         String(
@@ -728,17 +649,17 @@ app.post(
           ""
         ).trim();
 
-
       if (!delivery) {
 
-        return res.status(400).json({
+        return res.status(400)
+          .json({
 
-          success: false,
+            success: false,
 
-          message:
-            "納期連絡を入力してください"
+            message:
+              "納期連絡を入力してください"
 
-        });
+          });
 
       }
 
@@ -754,9 +675,9 @@ app.post(
       );
 
 
-      // --------------------------
-      // PDFファイル名
-      // --------------------------
+      // --------------------------------
+      // ファイル名
+      // --------------------------------
 
       const pdfFileName =
         `御見積書_${estimate.id}.pdf`;
@@ -767,28 +688,32 @@ app.post(
           pdfFileName
         );
 
-
-      console.log(
-        "PDF作成リクエスト:",
-        estimate.id
-      );
-
       console.log(
         "PDF path:",
         pdfPath
       );
 
 
-      // --------------------------
+      // --------------------------------
       // PDF作成
-      // --------------------------
+      // --------------------------------
 
       const doc =
         new PDFDocument({
 
           size: "A4",
 
-          margin: 55
+          margin: 55,
+
+          info: {
+
+            Title:
+              "御見積書",
+
+            Author:
+              "見積依頼管理システム"
+
+          }
 
         });
 
@@ -798,30 +723,160 @@ app.post(
           pdfPath
         );
 
-      doc.pipe(stream);
+
+      let finished = false;
 
 
-      // --------------------------
+      stream.on(
+        "error",
+        (error) => {
+
+          console.error(
+            "PDF書き込みエラー:",
+            error
+          );
+
+          if (
+            !res.headersSent
+          ) {
+
+            res.status(500)
+              .json({
+
+                success: false,
+
+                message:
+                  "PDFファイルの保存に失敗しました"
+
+              });
+
+          }
+
+        }
+      );
+
+
+      stream.on(
+        "finish",
+        () => {
+
+          try {
+
+            const stat =
+              fs.statSync(
+                pdfPath
+              );
+
+            console.log(
+              "PDF size:",
+              stat.size,
+              "bytes"
+            );
+
+
+            if (
+              stat.size < 1000
+            ) {
+
+              console.error(
+                "PDFサイズが小さすぎます:",
+                stat.size
+              );
+
+              if (
+                !res.headersSent
+              ) {
+
+                return res.status(500)
+                  .json({
+
+                    success: false,
+
+                    message:
+                      "PDFファイルが正しく生成されませんでした"
+
+                  });
+
+              }
+
+              return;
+            }
+
+
+            finished = true;
+
+            console.log(
+              "御見積書PDFを作成しました:",
+              pdfFileName
+            );
+
+
+            res.json({
+
+              success: true,
+
+              message:
+                "御見積書PDFを作成しました",
+
+              fileName:
+                pdfFileName,
+
+              url:
+                `/pdf/${encodeURIComponent(
+                  pdfFileName
+                )}`
+
+            });
+
+          } catch (error) {
+
+            console.error(
+              "PDF確認エラー:",
+              error
+            );
+
+            if (
+              !res.headersSent
+            ) {
+
+              res.status(500)
+                .json({
+
+                  success: false,
+
+                  message:
+                    "PDFの確認に失敗しました"
+
+                });
+
+            }
+
+          }
+
+        }
+      );
+
+
+      doc.pipe(
+        stream
+      );
+
+
+      // --------------------------------
       // 日本語フォント
-      // --------------------------
+      // --------------------------------
 
       doc.font(
         JAPANESE_FONT
       );
 
 
-      console.log(
-        "PDF font:",
-        JAPANESE_FONT
-      );
-
-
-      // --------------------------
+      // --------------------------------
       // タイトル
-      // --------------------------
+      // --------------------------------
 
       doc
-        .fontSize(28)
+        .fontSize(26)
         .text(
           "御 見 積 書",
           {
@@ -832,9 +887,9 @@ app.post(
       doc.moveDown(2);
 
 
-      // --------------------------
+      // --------------------------------
       // 見積情報
-      // --------------------------
+      // --------------------------------
 
       doc
         .fontSize(11)
@@ -845,6 +900,7 @@ app.post(
           }
         );
 
+
       const createdDate =
         estimate.createdAt
           ? new Date(
@@ -854,6 +910,7 @@ app.post(
             )
           : "";
 
+
       doc.text(
         `受付日時：${createdDate}`,
         {
@@ -861,12 +918,13 @@ app.post(
         }
       );
 
+
       doc.moveDown(2);
 
 
-      // --------------------------
+      // --------------------------------
       // お客様情報
-      // --------------------------
+      // --------------------------------
 
       doc
         .fontSize(16)
@@ -880,33 +938,33 @@ app.post(
       doc.moveDown(0.5);
 
 
-      const customerName =
-        String(
-          estimate.company || ""
-        ).trim();
-
-
-      // ★ お客様名には必ず「様」
       doc
         .fontSize(12)
         .text(
-          `会社名・氏名：${customerName} 様`
+          `会社名・氏名：${String(
+            estimate.company || ""
+          )} 様`
         );
 
       doc.text(
-        `電話番号：${estimate.phone || ""}`
+        `電話番号：${String(
+          estimate.phone || ""
+        )}`
       );
 
       doc.text(
-        `メールアドレス：${estimate.email || ""}`
+        `メールアドレス：${String(
+          estimate.email || ""
+        )}`
       );
+
 
       doc.moveDown(2);
 
 
-      // --------------------------
+      // --------------------------------
       // お見積内容
-      // --------------------------
+      // --------------------------------
 
       doc
         .fontSize(16)
@@ -920,12 +978,9 @@ app.post(
       doc.moveDown(0.8);
 
 
-      // --------------------------
-      // 表ヘッダー
-      // --------------------------
-
       const headerY =
         doc.y;
+
 
       doc
         .fontSize(10)
@@ -975,8 +1030,9 @@ app.post(
         }
       );
 
+
       doc.y =
-        headerY + 22;
+        headerY + 24;
 
 
       doc
@@ -990,12 +1046,13 @@ app.post(
         )
         .stroke();
 
-      doc.moveDown(0.5);
+
+      doc.y += 12;
 
 
-      // --------------------------
+      // --------------------------------
       // 商品
-      // --------------------------
+      // --------------------------------
 
       let total = 0;
 
@@ -1028,7 +1085,7 @@ app.post(
           subtotal;
 
 
-        const startY =
+        const y =
           doc.y;
 
 
@@ -1039,7 +1096,7 @@ app.post(
               item.code || ""
             ),
             55,
-            startY,
+            y,
             {
               width: 100
             }
@@ -1050,7 +1107,7 @@ app.post(
             item.size || ""
           ),
           155,
-          startY,
+          y,
           {
             width: 100
           }
@@ -1063,7 +1120,7 @@ app.post(
             item.pattern || ""
           )}`,
           255,
-          startY,
+          y,
           {
             width: 170
           }
@@ -1072,7 +1129,7 @@ app.post(
         doc.text(
           `${qty}個`,
           425,
-          startY,
+          y,
           {
             width: 45
           }
@@ -1083,7 +1140,7 @@ app.post(
             subtotal
           )}円`,
           470,
-          startY,
+          y,
           {
             width: 80,
             align: "right"
@@ -1092,14 +1149,14 @@ app.post(
 
 
         doc.y =
-          startY + 24;
+          y + 28;
 
       }
 
 
-      // --------------------------
-      // 下線
-      // --------------------------
+      // --------------------------------
+      // 合計
+      // --------------------------------
 
       doc
         .moveTo(
@@ -1115,10 +1172,6 @@ app.post(
       doc.moveDown(1);
 
 
-      // --------------------------
-      // 合計金額
-      // --------------------------
-
       doc
         .fontSize(18)
         .text(
@@ -1130,12 +1183,13 @@ app.post(
           }
         );
 
+
       doc.moveDown(2);
 
 
-      // --------------------------
+      // --------------------------------
       // 納期
-      // --------------------------
+      // --------------------------------
 
       doc
         .fontSize(15)
@@ -1148,18 +1202,20 @@ app.post(
 
       doc.moveDown(0.5);
 
+
       doc
         .fontSize(12)
         .text(
           delivery
         );
 
+
       doc.moveDown(2);
 
 
-      // --------------------------
+      // --------------------------------
       // 備考
-      // --------------------------
+      // --------------------------------
 
       doc
         .fontSize(15)
@@ -1172,119 +1228,21 @@ app.post(
 
       doc.moveDown(0.5);
 
+
       doc
         .fontSize(12)
         .text(
-          estimate.note ||
-          "なし"
+          String(
+            estimate.note || "なし"
+          )
         );
 
 
-      // --------------------------
+      // --------------------------------
       // PDF終了
-      // --------------------------
+      // --------------------------------
 
       doc.end();
-
-
-      // --------------------------
-      // PDF保存完了
-      // --------------------------
-
-      stream.on(
-        "finish",
-        () => {
-
-          try {
-
-            const stat =
-              fs.statSync(
-                pdfPath
-              );
-
-            console.log(
-              "御見積書PDFを作成しました:",
-              pdfFileName
-            );
-
-            console.log(
-              "PDF size:",
-              stat.size,
-              "bytes"
-            );
-
-            res.json({
-
-              success: true,
-
-              message:
-                "御見積書PDFを作成しました",
-
-              fileName:
-                pdfFileName,
-
-              url:
-                `/pdf/${encodeURIComponent(
-                  pdfFileName
-                )}`
-
-            });
-
-          } catch (error) {
-
-            console.error(
-              "PDF確認エラー:",
-              error
-            );
-
-            if (
-              !res.headersSent
-            ) {
-
-              res.status(500).json({
-
-                success: false,
-
-                message:
-                  "PDFファイルを確認できませんでした"
-
-              });
-
-            }
-
-          }
-
-        }
-      );
-
-
-      stream.on(
-        "error",
-        (error) => {
-
-          console.error(
-            "PDF保存エラー:",
-            error
-          );
-
-          if (
-            !res.headersSent
-          ) {
-
-            res.status(500).json({
-
-              success: false,
-
-              message:
-                "PDFの保存に失敗しました"
-
-            });
-
-          }
-
-        }
-      );
-
 
     } catch (error) {
 
@@ -1297,14 +1255,18 @@ app.post(
         !res.headersSent
       ) {
 
-        res.status(500).json({
+        res.status(500)
+          .json({
 
-          success: false,
+            success: false,
 
-          message:
-            "御見積書PDFの作成に失敗しました"
+            message:
+              "御見積書PDFの作成に失敗しました",
 
-        });
+            error:
+              error.message
+
+          });
 
       }
 
@@ -1314,21 +1276,24 @@ app.post(
 );
 
 
-// ==============================
+// ========================================
 // PDF公開
-// ==============================
+// ========================================
 
 app.use(
   "/pdf",
   express.static(
-    PDF_DIR
+    PDF_DIR,
+    {
+      fallthrough: false
+    }
   )
 );
 
 
-// ==============================
+// ========================================
 // サーバー起動
-// ==============================
+// ========================================
 
 app.listen(
   PORT,
@@ -1351,7 +1316,9 @@ app.listen(
     );
 
     console.log(
-      `Japanese font: ${JAPANESE_FONT}`
+      `Japanese font: ${
+        JAPANESE_FONT || "NOT FOUND"
+      }`
     );
 
   }
