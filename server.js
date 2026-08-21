@@ -59,19 +59,24 @@ function findJapaneseFont() {
 
   const fontCandidates = [
 
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+     path.join(
+    __dirname,
+    "NotoSansCJKjp-Regular.otf"
+  ),
 
-    "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf",
+  "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
 
-    "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
+  "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf",
 
-    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+  "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
 
-    "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+  "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
 
-    "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"
+  "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
 
-  ];
+  "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"
+
+];
 
   for (const font of fontCandidates) {
 
