@@ -1,484 +1,261 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
->
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>見積依頼管理画面</title>
 
-
 <style>
-
 * {
   box-sizing: border-box;
 }
 
-
 body {
-
   margin: 0;
-
   font-family:
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     "Noto Sans JP",
     sans-serif;
-
   background: #f4f7fb;
-
   color: #172033;
-
 }
-
 
 header {
-
   background: #0b3570;
-
   color: white;
-
   padding: 22px 30px;
-
 }
-
 
 header h1 {
-
   margin: 0;
-
   font-size: 26px;
-
 }
-
 
 header p {
-
   margin: 6px 0 0;
-
   opacity: 0.85;
-
 }
-
 
 .container {
-
   max-width: 1400px;
-
   margin: 30px auto;
-
   padding: 0 20px;
-
 }
-
 
 .toolbar {
-
   background: white;
-
   border-radius: 12px;
-
   padding: 18px;
-
   margin-bottom: 20px;
-
-  box-shadow:
-    0 2px 10px rgba(0,0,0,0.06);
-
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
   display: flex;
-
   justify-content: space-between;
-
   align-items: center;
-
   gap: 15px;
-
 }
-
 
 .count {
-
   font-weight: bold;
-
   font-size: 18px;
-
 }
-
 
 button {
-
   border: none;
-
   border-radius: 7px;
-
   padding: 10px 18px;
-
   cursor: pointer;
-
   font-size: 14px;
-
 }
-
 
 button:disabled {
-
   opacity: 0.6;
-
   cursor: wait;
-
 }
-
 
 .reload {
-
   background: #0b3570;
-
   color: white;
-
 }
-
 
 .reload:hover {
-
   background: #082956;
-
 }
-
 
 .empty {
-
   background: white;
-
   padding: 50px;
-
   text-align: center;
-
   border-radius: 12px;
-
   color: #687386;
-
 }
-
 
 .error {
-
   background: #fff0f0;
-
   color: #b00020;
-
   padding: 20px;
-
   border-radius: 10px;
-
   margin-bottom: 20px;
-
 }
-
 
 .card {
-
   background: white;
-
   border-radius: 12px;
-
   margin-bottom: 20px;
-
-  box-shadow:
-    0 2px 10px rgba(0,0,0,0.06);
-
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
   overflow: hidden;
-
 }
-
 
 .card-header {
-
   background: #eef4fc;
-
   padding: 16px 20px;
-
   display: flex;
-
   justify-content: space-between;
-
   align-items: center;
-
   gap: 15px;
-
 }
-
 
 .card-number {
-
   font-weight: bold;
-
   color: #0b3570;
-
 }
-
 
 .date {
-
   color: #687386;
-
   font-size: 14px;
-
 }
-
 
 .card-body {
-
   padding: 20px;
-
 }
-
 
 .info-grid {
-
   display: grid;
-
-  grid-template-columns:
-    repeat(2, 1fr);
-
+  grid-template-columns: repeat(2, 1fr);
   gap: 15px 30px;
-
   margin-bottom: 20px;
-
 }
-
 
 .info-box {
-
-  border-bottom:
-    1px solid #e6e9ef;
-
+  border-bottom: 1px solid #e6e9ef;
   padding-bottom: 10px;
-
 }
-
 
 .label {
-
   display: block;
-
   color: #687386;
-
   font-size: 13px;
-
   margin-bottom: 5px;
-
 }
-
 
 .value {
-
   font-size: 15px;
-
   white-space: pre-wrap;
-
   word-break: break-word;
-
 }
-
 
 .items-title {
-
   font-weight: bold;
-
   color: #0b3570;
-
   margin: 20px 0 10px;
-
 }
-
 
 .item {
-
-  border:
-    1px solid #e0e5ec;
-
+  border: 1px solid #e0e5ec;
   border-radius: 8px;
-
   padding: 14px;
-
   margin-bottom: 10px;
-
 }
-
 
 .item-grid {
-
   display: grid;
-
-  grid-template-columns:
-    1fr 1fr 1fr 1fr;
-
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 10px;
-
 }
-
 
 .item-code {
-
   font-weight: bold;
-
 }
-
 
 .amount {
-
   text-align: right;
-
   font-weight: bold;
-
-  margin-top: 12px;
-
+  margin-top: 15px;
 }
-
 
 .delivery-area {
-
   margin-top: 20px;
-
   padding: 18px;
-
   background: #fafbfd;
-
-  border:
-    1px solid #e0e5ec;
-
+  border: 1px solid #e0e5ec;
   border-radius: 8px;
-
 }
-
 
 .delivery-area label {
-
   display: block;
-
   font-weight: bold;
-
   margin-bottom: 8px;
-
 }
-
 
 .delivery-area input {
-
   width: 100%;
-
   padding: 11px;
-
-  border:
-    1px solid #ccd3df;
-
+  border: 1px solid #ccd3df;
   border-radius: 6px;
-
   font-size: 15px;
-
 }
-
 
 .actions {
-
   margin-top: 20px;
-
   display: flex;
-
   justify-content: flex-end;
-
   gap: 10px;
-
 }
-
 
 .pdf-button {
-
   background: #0b3570;
-
   color: white;
-
 }
-
 
 .pdf-button:hover {
-
   background: #082956;
-
 }
-
-
-.pdf-button.loading {
-
-  background: #687386;
-
-}
-
 
 @media (max-width: 800px) {
 
   .info-grid,
   .item-grid {
-
     grid-template-columns: 1fr;
-
   }
-
 
   .card-header {
-
     flex-direction: column;
-
     align-items: flex-start;
-
   }
 
-
   .amount {
-
     text-align: left;
-
   }
 
 }
-
 </style>
-
 </head>
-
 
 <body>
 
-
 <header>
-
   <h1>📋 見積依頼管理</h1>
-
-  <p>
-    受け付けた見積依頼を確認します
-  </p>
-
+  <p>受け付けた見積依頼を確認します</p>
 </header>
-
 
 <div class="container">
 
-
   <div class="toolbar">
 
-    <div
-      class="count"
-      id="count"
-    >
+    <div class="count" id="count">
       見積依頼を読み込み中...
     </div>
-
 
     <button
       class="reload"
@@ -489,11 +266,9 @@ button:disabled {
 
   </div>
 
-
   <div id="error"></div>
 
   <div id="list"></div>
-
 
 </div>
 
@@ -501,9 +276,9 @@ button:disabled {
 <script>
 
 
-// ======================================
+// ==================================================
 // 見積依頼一覧を読み込む
-// ======================================
+// ==================================================
 
 async function loadEstimates() {
 
@@ -556,13 +331,9 @@ async function loadEstimates() {
     if (!estimates.length) {
 
       list.innerHTML = `
-
         <div class="empty">
-
           まだ見積依頼はありません。
-
         </div>
-
       `;
 
       return;
@@ -574,16 +345,264 @@ async function loadEstimates() {
       estimates
         .slice()
         .reverse()
-        .map(
-          (estimate, index) => {
+        .map((estimate, index) => {
 
-            return renderEstimate(
-              estimate,
-              index
-            );
 
-          }
-        )
+          const items =
+            Array.isArray(estimate.items)
+              ? estimate.items
+              : [];
+
+
+          let total = 0;
+
+
+          const itemHtml =
+            items.map(item => {
+
+
+              const price =
+                Number(item.price) || 0;
+
+
+              const qty =
+                Number(item.qty) || 0;
+
+
+              const subtotal =
+                price * qty;
+
+
+              total += subtotal;
+
+
+              return `
+
+                <div class="item">
+
+                  <div class="item-grid">
+
+                    <div>
+
+                      <span class="label">
+                        品番
+                      </span>
+
+                      <div class="item-code">
+                        ${esc(item.code)}
+                      </div>
+
+                    </div>
+
+
+                    <div>
+
+                      <span class="label">
+                        サイズ
+                      </span>
+
+                      <div>
+                        ${esc(item.size)}
+                      </div>
+
+                    </div>
+
+
+                    <div>
+
+                      <span class="label">
+                        ブランド・パターン
+                      </span>
+
+                      <div>
+                        ${esc(item.brand)}
+                        ${esc(item.pattern)}
+                      </div>
+
+                    </div>
+
+
+                    <div>
+
+                      <span class="label">
+                        数量・金額
+                      </span>
+
+                      <div>
+                        ${qty}個
+                        /
+                        ${fmt(subtotal)}円
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              `;
+
+            }).join("");
+
+
+          const date =
+            estimate.createdAt
+              ? new Date(
+                  estimate.createdAt
+                ).toLocaleString("ja-JP")
+              : "";
+
+
+          return `
+
+            <div class="card">
+
+
+              <div class="card-header">
+
+                <div class="card-number">
+                  見積依頼 #${index + 1}
+                </div>
+
+
+                <div class="date">
+                  📅 ${esc(date)}
+                </div>
+
+              </div>
+
+
+              <div class="card-body">
+
+
+                <div class="info-grid">
+
+
+                  <div class="info-box">
+
+                    <span class="label">
+                      🏢 会社名・氏名
+                    </span>
+
+                    <div class="value">
+                      ${esc(estimate.company)}
+                    </div>
+
+                  </div>
+
+
+                  <div class="info-box">
+
+                    <span class="label">
+                      📞 電話番号
+                    </span>
+
+                    <div class="value">
+                      ${esc(estimate.phone)}
+                    </div>
+
+                  </div>
+
+
+                  <div class="info-box">
+
+                    <span class="label">
+                      ✉️ メールアドレス
+                    </span>
+
+                    <div class="value">
+                      ${esc(estimate.email)}
+                    </div>
+
+                  </div>
+
+
+                  <div class="info-box">
+
+                    <span class="label">
+                      📝 備考
+                    </span>
+
+                    <div class="value">
+                      ${esc(
+                        estimate.note || "なし"
+                      )}
+                    </div>
+
+                  </div>
+
+
+                </div>
+
+
+                <div class="items-title">
+                  🛒 見積依頼された商品
+                </div>
+
+
+                ${
+                  itemHtml ||
+                  `
+                    <div class="empty">
+                      商品情報がありません。
+                    </div>
+                  `
+                }
+
+
+                <div class="amount">
+
+                  合計金額：
+                  ${fmt(total)}円
+
+                </div>
+
+
+                <div class="delivery-area">
+
+                  <label>
+                    🚚 納期連絡
+                  </label>
+
+
+                  <input
+                    type="text"
+                    id="delivery-${esc(
+                      String(estimate.id)
+                    )}"
+                    value="${esc(
+                      estimate.delivery || ""
+                    )}"
+                    placeholder="例：ご注文確定後、7営業日程度"
+                  >
+
+                </div>
+
+
+                <div class="actions">
+
+                  <button
+                    class="pdf-button"
+                    id="pdf-button-${esc(
+                      String(estimate.id)
+                    )}"
+                    onclick="createPdf('${esc(
+                      String(estimate.id)
+                    )}')"
+                  >
+                    📄 御見積書PDFを作成
+                  </button>
+
+                </div>
+
+
+              </div>
+
+            </div>
+
+          `;
+
+        })
         .join("");
 
 
@@ -613,344 +632,10 @@ async function loadEstimates() {
 }
 
 
-// ======================================
-// 見積依頼カードを作成
-// ======================================
 
-function renderEstimate(
-  estimate,
-  index
-) {
-
-  const items =
-    Array.isArray(estimate.items)
-      ? estimate.items
-      : [];
-
-
-  let total = 0;
-
-
-  const itemHtml =
-    items.map(item => {
-
-      const price =
-        Number(item.price) || 0;
-
-
-      const qty =
-        Number(item.qty) || 0;
-
-
-      const subtotal =
-        price * qty;
-
-
-      total += subtotal;
-
-
-      const brand =
-        String(item.brand || "");
-
-
-      const pattern =
-        String(item.pattern || "");
-
-
-      const brandPattern =
-        `${brand} ${pattern}`.trim();
-
-
-      return `
-
-        <div class="item">
-
-          <div class="item-grid">
-
-
-            <div>
-
-              <span class="label">
-                品番
-              </span>
-
-              <div class="item-code">
-
-                ${esc(item.code)}
-
-              </div>
-
-            </div>
-
-
-            <div>
-
-              <span class="label">
-                サイズ
-              </span>
-
-              <div>
-
-                ${esc(item.size)}
-
-              </div>
-
-            </div>
-
-
-            <div>
-
-              <span class="label">
-                ブランド・パターン
-              </span>
-
-              <div>
-
-                ${esc(brandPattern)}
-
-              </div>
-
-            </div>
-
-
-            <div>
-
-              <span class="label">
-                数量・金額
-              </span>
-
-              <div>
-
-                ${qty}個
-                /
-                ${fmt(subtotal)}円
-
-              </div>
-
-            </div>
-
-
-          </div>
-
-        </div>
-
-      `;
-
-    }).join("");
-
-
-  const date =
-    estimate.createdAt
-      ? new Date(
-          estimate.createdAt
-        ).toLocaleString(
-          "ja-JP"
-        )
-      : "";
-
-
-  const id =
-    String(estimate.id);
-
-
-  return `
-
-    <div class="card">
-
-
-      <div class="card-header">
-
-
-        <div class="card-number">
-
-          見積依頼 #${index + 1}
-
-        </div>
-
-
-        <div class="date">
-
-          📅 ${esc(date)}
-
-        </div>
-
-
-      </div>
-
-
-      <div class="card-body">
-
-
-        <div class="info-grid">
-
-
-          <div class="info-box">
-
-            <span class="label">
-
-              🏢 会社名・氏名
-
-            </span>
-
-
-            <div class="value">
-
-              ${esc(estimate.company)}
-
-            </div>
-
-          </div>
-
-
-          <div class="info-box">
-
-            <span class="label">
-
-              📞 電話番号
-
-            </span>
-
-
-            <div class="value">
-
-              ${esc(estimate.phone)}
-
-            </div>
-
-          </div>
-
-
-          <div class="info-box">
-
-            <span class="label">
-
-              ✉️ メールアドレス
-
-            </span>
-
-
-            <div class="value">
-
-              ${esc(estimate.email)}
-
-            </div>
-
-          </div>
-
-
-          <div class="info-box">
-
-            <span class="label">
-
-              📝 備考
-
-            </span>
-
-
-            <div class="value">
-
-              ${esc(
-                estimate.note || "なし"
-              )}
-
-            </div>
-
-          </div>
-
-
-        </div>
-
-
-        <div class="items-title">
-
-          🛒 見積依頼された商品
-
-        </div>
-
-
-        ${
-          itemHtml ||
-          `
-
-            <div class="empty">
-
-              商品情報がありません。
-
-            </div>
-
-          `
-        }
-
-
-        <div class="amount">
-
-          合計金額：
-          ${fmt(total)}円
-
-        </div>
-
-
-        <div class="delivery-area">
-
-
-          <label>
-
-            🚚 納期連絡
-
-          </label>
-
-
-          <input
-
-            type="text"
-
-            id="delivery-${esc(id)}"
-
-            value="${esc(
-              estimate.delivery || ""
-            )}"
-
-            placeholder="例：ご注文確定後、7営業日程度"
-
-          >
-
-
-        </div>
-
-
-        <div class="actions">
-
-
-          <button
-
-            class="pdf-button"
-
-            id="pdf-button-${esc(id)}"
-
-            onclick="createPdf('${esc(id)}')"
-
-          >
-
-            📄 御見積書PDFを作成
-
-          </button>
-
-
-        </div>
-
-
-      </div>
-
-    </div>
-
-  `;
-
-}
-
-
-// ======================================
-// PDFを作成
-// ======================================
+// ==================================================
+// 納期保存 → PDF作成
+// ==================================================
 
 async function createPdf(id) {
 
@@ -971,10 +656,6 @@ async function createPdf(id) {
     input?.value.trim() || "";
 
 
-  // ------------------------------
-  // 納期チェック
-  // ------------------------------
-
   if (!delivery) {
 
     alert(
@@ -988,49 +669,50 @@ async function createPdf(id) {
   }
 
 
-  // ------------------------------
-  // ボタンを処理中にする
-  // ------------------------------
-
-  if (button) {
-
-    button.disabled = true;
-
-    button.classList.add(
-      "loading"
-    );
-
-    button.textContent =
-      "📄 PDFを作成中...";
-
-  }
+  const originalText =
+    button?.textContent ||
+    "📄 御見積書PDFを作成";
 
 
   try {
 
 
-    // ==================================
+    // ------------------------------------------
+    // ボタンを処理中にする
+    // ------------------------------------------
+
+    if (button) {
+
+      button.disabled = true;
+
+      button.textContent =
+        "⏳ PDFを作成しています...";
+
+    }
+
+
+
+    // ------------------------------------------
     // ① 納期を保存
-    // ==================================
+    // ------------------------------------------
 
     const deliveryResponse =
       await fetch(
-        `/api/estimates/${encodeURIComponent(id)}/delivery`,
+        `/api/estimates/${encodeURIComponent(
+          id
+        )}/delivery`,
         {
 
           method: "PATCH",
 
           headers: {
-
             "Content-Type":
               "application/json"
-
           },
 
-          body:
-            JSON.stringify({
-              delivery
-            })
+          body: JSON.stringify({
+            delivery: delivery
+          })
 
         }
       );
@@ -1047,77 +729,243 @@ async function createPdf(id) {
 
       throw new Error(
         deliveryResult.message ||
-        "納期の保存に失敗しました"
+        "納期連絡の保存に失敗しました"
       );
 
     }
 
 
-    // ==================================
-    // ② PDFを作成
-    // ==================================
+
+    // ------------------------------------------
+    // ② PDFをサーバーで生成
+    // ------------------------------------------
 
     const pdfResponse =
       await fetch(
-        `/api/estimates/${encodeURIComponent(id)}/pdf`,
+        `/api/estimates/${encodeURIComponent(
+          id
+        )}/pdf`,
         {
 
           method: "POST",
 
           headers: {
-
             "Content-Type":
               "application/json"
-
           },
 
-          body:
-            JSON.stringify({
-              delivery
-            })
+          body: JSON.stringify({
+            delivery: delivery
+          })
 
         }
       );
 
 
-    const pdfResult =
-      await pdfResponse.json();
 
+    // ------------------------------------------
+    // ③ HTTPエラーの場合
+    // ------------------------------------------
+
+    if (!pdfResponse.ok) {
+
+
+      let message =
+        "御見積書PDFの作成に失敗しました";
+
+
+      try {
+
+        const errorResult =
+          await pdfResponse.json();
+
+
+        if (errorResult.message) {
+
+          message =
+            errorResult.message;
+
+        }
+
+      } catch (_) {
+
+        // JSONでない場合はそのまま
+
+      }
+
+
+      throw new Error(message);
+
+    }
+
+
+
+    // ------------------------------------------
+    // ④ 返ってきたデータを判定
+    //
+    // PDFそのものが返る場合
+    // JSONでPDF URLが返る場合
+    //
+    // 両方に対応
+    // ------------------------------------------
+
+    const contentType =
+      (
+        pdfResponse.headers.get(
+          "content-type"
+        ) || ""
+      ).toLowerCase();
+
+
+
+    // ==========================================
+    // パターンA
+    // PDFファイルそのものが返ってきた場合
+    // ==========================================
 
     if (
-      !pdfResponse.ok ||
-      !pdfResult.success
+      contentType.includes(
+        "application/pdf"
+      )
     ) {
 
-      throw new Error(
-        pdfResult.message ||
-        "PDFの作成に失敗しました"
+
+      const blob =
+        await pdfResponse.blob();
+
+
+      const url =
+        window.URL.createObjectURL(
+          blob
+        );
+
+
+      const link =
+        document.createElement("a");
+
+
+      link.href = url;
+
+
+      link.download =
+        `御見積書_${id}.pdf`;
+
+
+      document.body.appendChild(
+        link
       );
+
+
+      link.click();
+
+
+      link.remove();
+
+
+      setTimeout(() => {
+
+        window.URL.revokeObjectURL(
+          url
+        );
+
+      }, 10000);
+
 
     }
 
 
-    // ==================================
-    // ③ PDFを開く
-    // ==================================
+    // ==========================================
+    // パターンB
+    // JSONでPDF URLが返ってきた場合
+    // ==========================================
 
-    if (pdfResult.url) {
+    else {
 
-      window.open(
-        pdfResult.url,
-        "_blank"
-      );
 
-    } else {
+      let result;
 
-      throw new Error(
-        "PDFのURLが取得できませんでした"
-      );
+
+      try {
+
+        result =
+          await pdfResponse.json();
+
+      } catch (_) {
+
+        throw new Error(
+          "PDF作成結果を正しく受け取れませんでした"
+        );
+
+      }
+
+
+      if (
+        !result ||
+        !result.success
+      ) {
+
+        throw new Error(
+          result?.message ||
+          "御見積書PDFの作成に失敗しました"
+        );
+
+      }
+
+
+      if (!result.url) {
+
+        throw new Error(
+          "PDFのURLが取得できませんでした"
+        );
+
+      }
+
+
+      const pdfUrl =
+        new URL(
+          result.url,
+          window.location.origin
+        ).href;
+
+
+      // PDFを新しいタブで開く
+
+      const pdfWindow =
+        window.open(
+          pdfUrl,
+          "_blank"
+        );
+
+
+      // ポップアップがブロックされた場合
+
+      if (!pdfWindow) {
+
+        window.location.href =
+          pdfUrl;
+
+      }
 
     }
+
+
+
+    // ------------------------------------------
+    // ⑤ 完了
+    // ------------------------------------------
+
+    alert(
+      "納期を保存し、御見積書PDFを作成しました。"
+    );
+
+
+    // 最新情報に更新
+
+    await loadEstimates();
 
 
   } catch (error) {
+
 
     console.error(
       "PDF作成エラー:",
@@ -1126,7 +974,7 @@ async function createPdf(id) {
 
 
     alert(
-      "PDFの作成に失敗しました。\n\n" +
+      "御見積書PDFの作成に失敗しました。\n\n" +
       error.message
     );
 
@@ -1134,20 +982,23 @@ async function createPdf(id) {
   } finally {
 
 
-    // ==================================
-    // ④ ボタンを元に戻す
-    // ==================================
+    // ------------------------------------------
+    // ボタンを元に戻す
+    // ------------------------------------------
 
-    if (button) {
-
-      button.disabled = false;
-
-      button.classList.remove(
-        "loading"
+    const currentButton =
+      document.getElementById(
+        `pdf-button-${id}`
       );
 
-      button.textContent =
-        "📄 御見積書PDFを作成";
+
+    if (currentButton) {
+
+      currentButton.disabled =
+        false;
+
+      currentButton.textContent =
+        originalText;
 
     }
 
@@ -1156,9 +1007,10 @@ async function createPdf(id) {
 }
 
 
-// ======================================
-// 数字をカンマ区切り
-// ======================================
+
+// ==================================================
+// 数字を3桁区切りにする
+// ==================================================
 
 function fmt(value) {
 
@@ -1173,47 +1025,54 @@ function fmt(value) {
 }
 
 
-// ======================================
+
+// ==================================================
 // HTMLエスケープ
-// ======================================
+// ==================================================
 
 function esc(value) {
 
   return String(
     value ?? ""
-  ).replace(
-    /[&<>"']/g,
-    function(match) {
+  )
+    .replace(
+      /[&<>"']/g,
+      function(match) {
 
-      return {
+        return {
 
-        "&": "&amp;",
+          "&":
+            "&amp;",
 
-        "<": "&lt;",
+          "<":
+            "&lt;",
 
-        ">": "&gt;",
+          ">":
+            "&gt;",
 
-        '"': "&quot;",
+          '"':
+            "&quot;",
 
-        "'": "&#39;"
+          "'":
+            "&#39;"
 
-      }[match];
+        }[match];
 
-    }
-  );
+      }
+    );
 
 }
 
 
-// ======================================
-// 最初に読み込む
-// ======================================
+
+// ==================================================
+// 最初に見積依頼を読み込む
+// ==================================================
 
 loadEstimates();
 
+
 </script>
 
-
 </body>
-
 </html>
