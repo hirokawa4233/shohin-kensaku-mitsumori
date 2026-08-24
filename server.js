@@ -241,7 +241,117 @@ app.get(
   }
 );
 
+// ==============================
+// 商品データ保存API
+// ==============================
 
+app.post(
+  "/api/products",
+  (req, res) => {
+
+    try {
+
+      const products =
+        Array.isArray(req.body.products)
+          ? req.body.products
+          : [];
+
+      const workbook =
+        XLSX.readFile(
+          EXCEL_FILE,
+          {
+            cellDates: false,
+            bookVBA: true
+          }
+        );
+
+      if (
+        !workbook.SheetNames.includes(
+          PRODUCT_SHEET
+        )
+      ) {
+
+        throw new Error(
+          `Excelに「${PRODUCT_SHEET}」シートがありません。`
+        );
+
+      }
+
+      const rows =
+        products.map((product) => ({
+
+          "品番":
+            product.code ?? "",
+
+          "サイズ":
+            product.size ?? "",
+
+          "A表":
+            product.a ?? "",
+
+          "価格":
+            product.price ?? "",
+
+          "ブランド":
+            product.brand ?? "",
+
+          "パターン":
+            product.pattern ?? ""
+
+        }));
+
+      const newSheet =
+        XLSX.utils.json_to_sheet(
+          rows
+        );
+
+      workbook.Sheets[
+        PRODUCT_SHEET
+      ] =
+        newSheet;
+
+      XLSX.writeFile(
+        workbook,
+        EXCEL_FILE,
+        {
+          bookType: "xlsm"
+        }
+      );
+
+      console.log(
+        "商品データをExcelに保存しました"
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "商品データを保存しました"
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "商品データ保存エラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          error.message ||
+          "商品データの保存に失敗しました"
+
+      });
+
+    }
+
+  }
+);
 // ==============================
 // 見積データ読み込み
 // ==============================
