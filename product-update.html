@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>商品データ更新</title>
+
+<style>
+
+body {
+  font-family:
+    "Noto Sans JP",
+    "Yu Gothic",
+    sans-serif;
+
+  margin: 0;
+  padding: 24px;
+
+  background: #f5f7f8;
+  color: #222;
+}
+
+h1 {
+  margin: 0 0 8px;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.reload-button {
+  background: #1976d2;
+  color: white;
+}
+
+.add-button {
+  background: #2e8b57;
+  color: white;
+}
+
+.save-button {
+  background: #e67e22;
+  color: white;
+}
+
+.message {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 1000px;
+}
+
+th,
+td {
+  border-bottom: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #eef1f3;
+  position: sticky;
+  top: 0;
+}
+
+td input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.actions {
+  text-align: center;
+}
+
+.delete-button {
+  background: #d9534f;
+  color: white;
+}
+
+.empty {
+  padding: 30px;
+  text-align: center;
+  color: #777;
+}
+
+.loading {
+  padding: 30px;
+  text-align: center;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<h1>商品データ更新</h1>
+
+<div class="description">
+  価格表.xlsm の Sheet2 に登録されている商品を確認・編集します。
+</div>
+
+
+<div class="toolbar">
+
+  <button
+    class="reload-button"
+    onclick="loadProducts()"
+  >
+    商品データを再読み込み
+  </button>
+
+  <button
+    class="add-button"
+    onclick="addProduct()"
+  >
+    ＋ 商品を追加
+  </button>
+
+  <button
+    class="save-button"
+    onclick="saveProducts()"
+  >
+    商品データを保存
+  </button>
+
+</div>
+
+
+<div
+  id="message"
+  class="message"
+>
+  商品データを読み込んでいます……
+</div>
+
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>品番</th>
+<th>サイズ</th>
+<th>A表</th>
+<th>価格</th>
+<th>ブランド</th>
+<th>パターン</th>
+<th>操作</th>
+
+</tr>
+
+</thead>
+
+<tbody id="productTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+
+<script>
+
+let products = [];
+
+
+// ==============================
+// メッセージ
+// ==============================
+
+function showMessage(text) {
+
+  document.getElementById(
+    "message"
+  ).textContent = text;
+
+}
+
+
+// ==============================
+// 商品データ読み込み
+// ==============================
+
+async function loadProducts() {
+
+  const table =
+    document.getElementById(
+      "productTable"
+    );
+
+  table.innerHTML =
+    `<tr>
+      <td
+        colspan="7"
+        class="loading"
+      >
+        読み込み中……
+      </td>
+    </tr>`;
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/products"
+      );
+
+    const data =
+      await response.json();
+
+    if (!data.success) {
+
+      throw new Error(
+        data.message ||
+        "商品データの取得に失敗しました"
+      );
+
+    }
+
+    products =
+      Array.isArray(
+        data.products
+      )
+        ? data.products
+        : [];
+
+    renderProducts();
+
+    showMessage(
+      `${products.length} 件の商品を読み込みました。`
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    table.innerHTML =
+      `<tr>
+        <td
+          colspan="7"
+          class="empty"
+        >
+          商品データを読み込めませんでした。
+        </td>
+      </tr>`;
+
+    showMessage(
+      "エラー：" +
+      error.message
+    );
+
+  }
+
+}
+
+
+// ==============================
+// 商品一覧表示
+// ==============================
+
+function renderProducts() {
+
+  const table =
+    document.getElementById(
+      "productTable"
+    );
+
+  table.innerHTML = "";
+
+  if (
+    products.length === 0
+  ) {
+
+    table.innerHTML =
+      `<tr>
+        <td
+          colspan="7"
+          class="empty"
+        >
+          商品データがありません。
+        </td>
+      </tr>`;
+
+    return;
+
+  }
+
+
+  products.forEach(
+    (product, index) => {
+
+      const row =
+        document.createElement(
+          "tr"
+        );
+
+
+      row.innerHTML = `
+
+        <td>
+          <input
+            type="text"
+            value="${escapeHtml(product.code ?? "")}"
+            onchange="updateProduct(${index}, 'code', this.value)"
+          >
+        </td>
+
+        <td>
+          <input
+            type="text"
+            value="${escapeHtml(product.size ?? "")}"
+            onchange="updateProduct(${index}, 'size', this.value)"
+          >
+        </td>
+
+        <td>
+          <input
+            type="text"
+            value="${escapeHtml(product.a ?? "")}"
+            onchange="updateProduct(${index}, 'a', this.value)"
+          >
+        </td>
+
+        <td>
+          <input
+            type="number"
+            value="${escapeHtml(product.price ?? "")}"
+            onchange="updateProduct(${index}, 'price', this.value)"
+          >
+        </td>
+
+        <td>
+          <input
+            type="text"
+            value="${escapeHtml(product.brand ?? "")}"
+            onchange="updateProduct(${index}, 'brand', this.value)"
+          >
+        </td>
+
+        <td>
+          <input
+            type="text"
+            value="${escapeHtml(product.pattern ?? "")}"
+            onchange="updateProduct(${index}, 'pattern', this.value)"
+          >
+        </td>
+
+        <td class="actions">
+
+          <button
+            class="delete-button"
+            onclick="deleteProduct(${index})"
+          >
+            削除
+          </button>
+
+        </td>
+
+      `;
+
+      table.appendChild(row);
+
+    }
+  );
+
+}
+
+
+// ==============================
+// 商品データ変更
+// ==============================
+
+function updateProduct(
+  index,
+  key,
+  value
+) {
+
+  products[index][key] =
+    value;
+
+}
+
+
+// ==============================
+// 商品追加
+// ==============================
+
+function addProduct() {
+
+  products.unshift({
+
+    code: "",
+
+    size: "",
+
+    a: "",
+
+    price: "",
+
+    brand: "",
+
+    pattern: ""
+
+  });
+
+  renderProducts();
+
+  showMessage(
+    "新しい商品を追加しました。内容を入力してください。"
+  );
+
+}
+
+
+// ==============================
+// 商品削除
+// ==============================
+
+function deleteProduct(index) {
+
+  const product =
+    products[index];
+
+  const code =
+    product.code || "この商品";
+
+  if (
+    !confirm(
+      `${code} を削除しますか？`
+    )
+  ) {
+
+    return;
+
+  }
+
+  products.splice(
+    index,
+    1
+  );
+
+  renderProducts();
+
+  showMessage(
+    "商品を削除しました。保存するまでExcelには反映されません。"
+  );
+
+}
+
+
+// ==============================
+// 保存
+// ==============================
+
+async function saveProducts() {
+
+  if (
+    !confirm(
+      "現在の商品データを保存しますか？"
+    )
+  ) {
+
+    return;
+
+  }
+
+  /*
+    現時点では保存APIがまだありません。
+
+    server.js に更新APIを追加した後、
+    ここからExcelへ保存します。
+  */
+
+  showMessage(
+    "保存機能は次の工程で接続します。現在はExcelを変更していません。"
+  );
+
+}
+
+
+// ==============================
+// HTMLエスケープ
+// ==============================
+
+function escapeHtml(
+  value
+) {
+
+  return String(value)
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+
+
+// ==============================
+// 初回読み込み
+// ==============================
+
+loadProducts();
+
+</script>
+
+</body>
+</html>
