@@ -890,18 +890,48 @@ app.post(
 
 
       const events =
-        Array.isArray(body.events)
+      Array.isArray(body.events)
           ? body.events
           : [];
-
+const channelAccessToken =
+  process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
       for (
         const event of events
       ) {
-
+if (
+  event.type !== "message" ||
+  event.message?.type !== "text" ||
+  !event.replyToken
+) {
+  continue;
+}
         const userId =
           event.source?.userId;
-
+const userMessage =
+  event.message.text;
+        const replyMessage =
+  `「${userMessage}」を受け取りました！`;
+        await fetch(
+  "https://api.line.me/v2/bot/message/reply",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization":
+        `Bearer ${channelAccessToken}`
+    },
+    body: JSON.stringify({
+      replyToken: event.replyToken,
+      messages: [
+        {
+          type: "text",
+          text: replyMessage
+        }
+      ]
+    })
+  }
+);
 
         if (userId) {
 
