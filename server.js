@@ -3,8 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 const PDFDocument = require("pdfkit");
+const { Pool } = require("pg");
 
 const app = express();
+
 const PORT = process.env.PORT || 3000;
 
 // ==============================
@@ -18,21 +20,39 @@ app.use(express.static(__dirname));
 
 
 // ==============================
+// PostgreSQL
+// ==============================
+
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL が設定されていません。");
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? {
+          rejectUnauthorized: false
+        }
+      : false
+});
+
+
+// ==============================
 // Excel商品マスタ
 // ==============================
-
-const EXCEL_FILE = path.join(__dirname, "価格表.xlsm");
-const PRODUCT_SHEET = "Sheet2";
-
-
-// ==============================
-// 見積データ保存先
+//
+// ※ 初回の商品データ取り込み用として残してあります。
+// 今後の商品データの保存先はPostgreSQLです。
 // ==============================
 
-const ESTIMATE_FILE = path.join(
+const EXCEL_FILE = path.join(
   __dirname,
-  "estimates.json"
+  "価格表.xlsm"
 );
+
+const PRODUCT_SHEET = "Sheet2";
 
 
 // ==============================
@@ -59,24 +79,24 @@ function findJapaneseFont() {
 
   const fontCandidates = [
 
-     path.join(
-    __dirname,
-    "NotoSansCJKjp-Regular.otf"
-  ),
+    path.join(
+      __dirname,
+      "NotoSansCJKjp-Regular.otf"
+    ),
 
-  "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
 
-  "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf",
+    "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf",
 
-  "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
 
-  "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
 
-  "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+    "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
 
-  "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"
+    "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"
 
-];
+  ];
 
   for (const font of fontCandidates) {
 
@@ -105,10 +125,119 @@ const JAPANESE_FONT =
 
 
 // ==============================
-// Excelから商品データを読み込む
+// PostgreSQL テーブル作成
 // ==============================
 
-function loadProducts() {
+async function initializeDatabase() {
+
+  if (!process.env.DATABASE_URL) {
+
+    throw new Error(
+      "DATABASE_URL が設定されていません。"
+    );
+
+  }
+
+  const client =
+    await pool.connect();
+
+  try {
+
+    await client.query("BEGIN");
+
+
+    // ==========================
+    // 商品テーブル
+    // ==========================
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        code TEXT NOT NULL DEFAULT '',
+        size TEXT NOT NULL DEFAULT '',
+        a TEXT NOT NULL DEFAULT '',
+        price NUMERIC NOT NULL DEFAULT 0,
+        brand TEXT NOT NULL DEFAULT '',
+        pattern TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+
+    // ==========================
+    // 見積テーブル
+    // ==========================
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS estimates (
+        id BIGINT PRIMARY KEY,
+        company TEXT NOT NULL DEFAULT '',
+        phone TEXT NOT NULL DEFAULT '',
+        email TEXT NOT NULL DEFAULT '',
+        note TEXT NOT NULL DEFAULT '',
+        items JSONB NOT NULL DEFAULT '[]'::jsonb,
+        delivery TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        delivery_updated_at TIMESTAMPTZ
+      )
+    `);
+
+
+    await client.query("COMMIT");
+
+    console.log(
+      "PostgreSQLのテーブルを確認しました。"
+    );
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    throw error;
+
+  } finally {
+
+    client.release();
+
+  }
+
+}
+
+
+// ==============================
+// PostgreSQL接続確認
+// ==============================
+
+async function checkDatabaseConnection() {
+
+  const result =
+    await pool.query(
+      "SELECT NOW() AS now"
+    );
+
+  console.log(
+    "PostgreSQL connected:",
+    result.rows[0].now
+  );
+
+}
+
+
+// ============================================================
+// 商品
+// ============================================================
+
+
+// ==============================
+// Excelから商品データを読み込む
+// ==============================
+//
+// 初回取り込みなどに使用できます。
+// 通常のAPIではPostgreSQLを使用します。
+// ==============================
+
+function loadProductsFromExcel() {
 
   if (!fs.existsSync(EXCEL_FILE)) {
 
@@ -152,46 +281,93 @@ function loadProducts() {
       }
     );
 
-  const products =
-    rows
-      .map((row) => {
+  return rows
+    .map((row) => {
 
-        return {
+      return {
 
-          code:
-            row["品番"],
+        code:
+          row["品番"],
 
-          size:
-            row["サイズ"],
+        size:
+          row["サイズ"],
 
-          a:
-            row["A表"],
+        a:
+          row["A表"],
 
-          price:
-            row["価格"],
+        price:
+          row["価格"],
 
-          brand:
-            row["ブランド"],
+        brand:
+          row["ブランド"],
 
-          pattern:
-            row["パターン"]
+        pattern:
+          row["パターン"]
 
-        };
+      };
 
-      })
-      .filter((p) => {
+    })
+    .filter((p) => {
 
-        return Object.values(p)
-          .some(
-            (value) =>
-              String(
-                value ?? ""
-              ).trim() !== ""
-          );
+      return Object.values(p)
+        .some(
+          (value) =>
+            String(
+              value ?? ""
+            ).trim() !== ""
+        );
 
-      });
+    });
 
-  return products;
+}
+
+
+// ==============================
+// PostgreSQLから商品データ取得
+// ==============================
+
+async function getProducts() {
+
+  const result =
+    await pool.query(`
+      SELECT
+        id,
+        code,
+        size,
+        a,
+        price,
+        brand,
+        pattern
+      FROM products
+      ORDER BY id ASC
+    `);
+
+  return result.rows.map(
+    (row) => ({
+
+      id:
+        row.id,
+
+      code:
+        row.code,
+
+      size:
+        row.size,
+
+      a:
+        row.a,
+
+      price:
+        Number(row.price),
+
+      brand:
+        row.brand,
+
+      pattern:
+        row.pattern
+
+    })
+  );
 
 }
 
@@ -202,12 +378,12 @@ function loadProducts() {
 
 app.get(
   "/api/products",
-  (req, res) => {
+  async (req, res) => {
 
     try {
 
       const products =
-        loadProducts();
+        await getProducts();
 
       res.json({
 
@@ -232,7 +408,7 @@ app.get(
         success: false,
 
         message:
-          error.message
+          "商品データの読み込みに失敗しました"
 
       });
 
@@ -241,97 +417,112 @@ app.get(
   }
 );
 
+
 // ==============================
 // 商品データ保存API
+// ==============================
+//
+// products配列をPostgreSQLに保存します。
+// 既存商品は一度削除してから入れ直します。
 // ==============================
 
 app.post(
   "/api/products",
-  (req, res) => {
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
 
     try {
 
       const products =
-        Array.isArray(req.body.products)
+        Array.isArray(
+          req.body.products
+        )
           ? req.body.products
           : [];
 
-      const workbook =
-        XLSX.readFile(
-          EXCEL_FILE,
-          {
-            cellDates: false,
-            bookVBA: true
-          }
-        );
 
-      if (
-        !workbook.SheetNames.includes(
-          PRODUCT_SHEET
-        )
+      await client.query("BEGIN");
+
+
+      // 現在の商品データを削除
+      await client.query(
+        "DELETE FROM products"
+      );
+
+
+      // 新しい商品データを登録
+      for (
+        const product of products
       ) {
 
-        throw new Error(
-          `Excelに「${PRODUCT_SHEET}」シートがありません。`
+        await client.query(
+          `
+          INSERT INTO products
+          (
+            code,
+            size,
+            a,
+            price,
+            brand,
+            pattern
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6
+          )
+          `,
+          [
+
+            product.code ?? "",
+
+            product.size ?? "",
+
+            product.a ?? "",
+
+            Number(
+              product.price
+            ) || 0,
+
+            product.brand ?? "",
+
+            product.pattern ?? ""
+
+          ]
         );
 
       }
 
-      const rows =
-        products.map((product) => ({
 
-          "品番":
-            product.code ?? "",
+      await client.query("COMMIT");
 
-          "サイズ":
-            product.size ?? "",
-
-          "A表":
-            product.a ?? "",
-
-          "価格":
-            product.price ?? "",
-
-          "ブランド":
-            product.brand ?? "",
-
-          "パターン":
-            product.pattern ?? ""
-
-        }));
-
-      const newSheet =
-        XLSX.utils.json_to_sheet(
-          rows
-        );
-
-      workbook.Sheets[
-        PRODUCT_SHEET
-      ] =
-        newSheet;
-
-      XLSX.writeFile(
-        workbook,
-        EXCEL_FILE,
-        {
-          bookType: "xlsm"
-        }
-      );
 
       console.log(
-        "商品データをExcelに保存しました"
+        "商品データをPostgreSQLに保存しました"
       );
+
 
       res.json({
 
         success: true,
 
         message:
-          "商品データを保存しました"
+          "商品データを保存しました",
+
+        count:
+          products.length
 
       });
 
     } catch (error) {
+
+      await client.query("ROLLBACK");
 
       console.error(
         "商品データ保存エラー:",
@@ -343,88 +534,214 @@ app.post(
         success: false,
 
         message:
-          error.message ||
           "商品データの保存に失敗しました"
 
       });
+
+    } finally {
+
+      client.release();
 
     }
 
   }
 );
+
+
 // ==============================
-// 見積データ読み込み
+// Excel → PostgreSQL 初回取り込みAPI
+// ==============================
+//
+// 必要なときだけPOSTすると、
+// 価格表.xlsmの内容をPostgreSQLへ取り込みます。
 // ==============================
 
-function loadEstimates() {
+app.post(
+  "/api/products/import-excel",
+  async (req, res) => {
 
-  if (
-    !fs.existsSync(
-      ESTIMATE_FILE
-    )
-  ) {
+    const client =
+      await pool.connect();
 
-    return [];
+    try {
 
-  }
+      const products =
+        loadProductsFromExcel();
 
-  try {
 
-    const data =
-      fs.readFileSync(
-        ESTIMATE_FILE,
-        "utf8"
+      await client.query("BEGIN");
+
+
+      await client.query(
+        "DELETE FROM products"
       );
 
-    const estimates =
-      JSON.parse(data);
 
-    if (
-      !Array.isArray(
-        estimates
-      )
-    ) {
+      for (
+        const product of products
+      ) {
 
-      return [];
+        await client.query(
+          `
+          INSERT INTO products
+          (
+            code,
+            size,
+            a,
+            price,
+            brand,
+            pattern
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6
+          )
+          `,
+          [
+
+            product.code ?? "",
+
+            product.size ?? "",
+
+            product.a ?? "",
+
+            Number(
+              product.price
+            ) || 0,
+
+            product.brand ?? "",
+
+            product.pattern ?? ""
+
+          ]
+        );
+
+      }
+
+
+      await client.query("COMMIT");
+
+
+      console.log(
+        `Excelから${products.length}件の商品を取り込みました`
+      );
+
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Excelの商品データを取り込みました",
+
+        count:
+          products.length
+
+      });
+
+    } catch (error) {
+
+      await client.query("ROLLBACK");
+
+      console.error(
+        "Excel取り込みエラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          error.message ||
+          "Excelの商品データ取り込みに失敗しました"
+
+      });
+
+    } finally {
+
+      client.release();
 
     }
 
-    return estimates;
-
-  } catch (error) {
-
-    console.error(
-      "見積データ読み込みエラー:",
-      error
-    );
-
-    return [];
-
   }
+);
 
-}
+
+// ============================================================
+// 見積
+// ============================================================
 
 
 // ==============================
-// 見積データ保存
+// 見積データ一覧取得
 // ==============================
 
-function saveEstimates(
-  estimates
-) {
+async function getEstimates() {
 
-  fs.writeFileSync(
+  const result =
+    await pool.query(`
+      SELECT
+        id,
+        company,
+        phone,
+        email,
+        note,
+        items,
+        delivery,
+        created_at,
+        delivery_updated_at
+      FROM estimates
+      ORDER BY created_at DESC
+    `);
 
-    ESTIMATE_FILE,
 
-    JSON.stringify(
-      estimates,
-      null,
-      2
-    ),
+  return result.rows.map(
+    (row) => ({
 
-    "utf8"
+      id:
+        Number(row.id),
 
+      company:
+        row.company,
+
+      phone:
+        row.phone,
+
+      email:
+        row.email,
+
+      note:
+        row.note,
+
+      items:
+        Array.isArray(row.items)
+          ? row.items
+          : [],
+
+      delivery:
+        row.delivery,
+
+      createdAt:
+        row.created_at
+          ? new Date(
+              row.created_at
+            ).toISOString()
+          : "",
+
+      deliveryUpdatedAt:
+        row.delivery_updated_at
+          ? new Date(
+              row.delivery_updated_at
+            ).toISOString()
+          : null
+
+    })
   );
 
 }
@@ -436,12 +753,13 @@ function saveEstimates(
 
 app.post(
   "/api/estimate",
-  (req, res) => {
+  async (req, res) => {
 
     try {
 
       const body =
         req.body || {};
+
 
       const estimate = {
 
@@ -449,16 +767,24 @@ app.post(
           Date.now(),
 
         company:
-          body.company || "",
+          String(
+            body.company || ""
+          ),
 
         phone:
-          body.phone || "",
+          String(
+            body.phone || ""
+          ),
 
         email:
-          body.email || "",
+          String(
+            body.email || ""
+          ),
 
         note:
-          body.note || "",
+          String(
+            body.note || ""
+          ),
 
         items:
           Array.isArray(
@@ -468,28 +794,70 @@ app.post(
             : [],
 
         delivery:
-          body.delivery || "",
+          String(
+            body.delivery || ""
+          ),
 
         createdAt:
           new Date().toISOString()
 
       };
 
-      const estimates =
-        loadEstimates();
 
-      estimates.push(
-        estimate
+      await pool.query(
+        `
+        INSERT INTO estimates
+        (
+          id,
+          company,
+          phone,
+          email,
+          note,
+          items,
+          delivery,
+          created_at
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6::jsonb,
+          $7,
+          $8
+        )
+        `,
+        [
+
+          estimate.id,
+
+          estimate.company,
+
+          estimate.phone,
+
+          estimate.email,
+
+          estimate.note,
+
+          JSON.stringify(
+            estimate.items
+          ),
+
+          estimate.delivery,
+
+          estimate.createdAt
+
+        ]
       );
 
-      saveEstimates(
-        estimates
-      );
 
       console.log(
         "見積依頼を受け付けました:",
         estimate.id
       );
+
 
       res.json({
 
@@ -532,12 +900,13 @@ app.post(
 
 app.get(
   "/api/estimates",
-  (req, res) => {
+  async (req, res) => {
 
     try {
 
       const estimates =
-        loadEstimates();
+        await getEstimates();
+
 
       res.json({
 
@@ -578,7 +947,7 @@ app.get(
 
 app.patch(
   "/api/estimates/:id/delivery",
-  (req, res) => {
+  async (req, res) => {
 
     try {
 
@@ -587,21 +956,42 @@ app.patch(
           req.params.id
         );
 
+
       const delivery =
         String(
           req.body?.delivery || ""
         ).trim();
 
-      const estimates =
-        loadEstimates();
 
-      const estimate =
-        estimates.find(
-          (item) =>
-            Number(item.id) === id
+      const result =
+        await pool.query(
+          `
+          UPDATE estimates
+          SET
+            delivery = $1,
+            delivery_updated_at = NOW()
+          WHERE id = $2
+          RETURNING
+            id,
+            company,
+            phone,
+            email,
+            note,
+            items,
+            delivery,
+            created_at,
+            delivery_updated_at
+          `,
+          [
+            delivery,
+            id
+          ]
         );
 
-      if (!estimate) {
+
+      if (
+        result.rowCount === 0
+      ) {
 
         return res.status(404).json({
 
@@ -614,20 +1004,12 @@ app.patch(
 
       }
 
-      estimate.delivery =
-        delivery;
-
-      estimate.deliveryUpdatedAt =
-        new Date().toISOString();
-
-      saveEstimates(
-        estimates
-      );
 
       console.log(
         "納期連絡を更新しました:",
         id
       );
+
 
       res.json({
 
@@ -636,7 +1018,8 @@ app.patch(
         message:
           "納期連絡を保存しました",
 
-        estimate
+        estimate:
+          result.rows[0]
 
       });
 
@@ -663,6 +1046,113 @@ app.patch(
 
 
 // ==============================
+// 見積依頼削除API
+// ==============================
+//
+// 「削除する」と明示的に呼び出したときだけ削除。
+// 自動削除はしません。
+// ==============================
+
+app.delete(
+  "/api/estimates/:id",
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+
+      if (
+        !Number.isSafeInteger(id)
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "不正な見積番号です"
+
+        });
+
+      }
+
+
+      const result =
+        await pool.query(
+          `
+          DELETE FROM estimates
+          WHERE id = $1
+          RETURNING id
+          `,
+          [id]
+        );
+
+
+      if (
+        result.rowCount === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "指定された見積依頼が見つかりません"
+
+        });
+
+      }
+
+
+      console.log(
+        "見積依頼を削除しました:",
+        id
+      );
+
+
+      res.json({
+
+        success: true,
+
+        message:
+          "見積依頼を削除しました",
+
+        id
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "見積削除エラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "見積依頼の削除に失敗しました"
+
+      });
+
+    }
+
+  }
+);
+
+
+// ============================================================
+// PDF
+// ============================================================
+
+
+// ==============================
 // 金額フォーマット
 // ==============================
 
@@ -683,7 +1173,7 @@ function formatNumber(value) {
 
 app.post(
   "/api/estimates/:id/pdf",
-  (req, res) => {
+  async (req, res) => {
 
     try {
 
@@ -692,16 +1182,29 @@ app.post(
           req.params.id
         );
 
-      const estimates =
-        loadEstimates();
 
-      const estimate =
-        estimates.find(
-          (item) =>
-            Number(item.id) === id
+      const result =
+        await pool.query(
+          `
+          SELECT
+            id,
+            company,
+            phone,
+            email,
+            note,
+            items,
+            delivery,
+            created_at
+          FROM estimates
+          WHERE id = $1
+          `,
+          [id]
         );
 
-      if (!estimate) {
+
+      if (
+        result.rowCount === 0
+      ) {
 
         return res.status(404).json({
 
@@ -715,6 +1218,45 @@ app.post(
       }
 
 
+      const row =
+        result.rows[0];
+
+
+      const estimate = {
+
+        id:
+          Number(row.id),
+
+        company:
+          row.company,
+
+        phone:
+          row.phone,
+
+        email:
+          row.email,
+
+        note:
+          row.note,
+
+        items:
+          Array.isArray(row.items)
+            ? row.items
+            : [],
+
+        delivery:
+          row.delivery,
+
+        createdAt:
+          row.created_at
+            ? new Date(
+                row.created_at
+              ).toISOString()
+            : ""
+
+      };
+
+
       // ==========================
       // 納期
       // ==========================
@@ -725,6 +1267,7 @@ app.post(
           estimate.delivery ??
           ""
         ).trim();
+
 
       if (!delivery) {
 
@@ -740,14 +1283,22 @@ app.post(
       }
 
 
-      estimate.delivery =
-        delivery;
+      // ==========================
+      // 納期をDBへ保存
+      // ==========================
 
-      estimate.deliveryUpdatedAt =
-        new Date().toISOString();
-
-      saveEstimates(
-        estimates
+      await pool.query(
+        `
+        UPDATE estimates
+        SET
+          delivery = $1,
+          delivery_updated_at = NOW()
+        WHERE id = $2
+        `,
+        [
+          delivery,
+          id
+        ]
       );
 
 
@@ -757,6 +1308,7 @@ app.post(
 
       const pdfFileName =
         `御見積書_${estimate.id}.pdf`;
+
 
       const pdfPath =
         path.join(
@@ -816,6 +1368,7 @@ app.post(
           }
         );
 
+
       doc.moveDown(2);
 
 
@@ -867,11 +1420,9 @@ app.post(
           }
         );
 
+
       doc.moveDown(0.5);
 
-
-      // ★ ここだけ今回変更
-      // お客様のお名前に「様」を付ける
 
       const customerName =
         String(
@@ -911,6 +1462,7 @@ app.post(
             underline: true
           }
         );
+
 
       doc.moveDown(0.8);
 
@@ -1000,6 +1552,7 @@ app.post(
       // ==========================
 
       let total = 0;
+
 
       const items =
         Array.isArray(
@@ -1246,6 +1799,7 @@ app.post(
             error
           );
 
+
           if (
             !res.headersSent
           ) {
@@ -1271,6 +1825,7 @@ app.post(
         "PDF作成エラー:",
         error
       );
+
 
       if (
         !res.headersSent
@@ -1306,34 +1861,105 @@ app.use(
 
 
 // ==============================
-// サーバー起動
+// ヘルスチェック
 // ==============================
 
-app.listen(
-  PORT,
-  () => {
+app.get(
+  "/api/health",
+  async (req, res) => {
 
-    console.log(
-      `Server running on port ${PORT}`
-    );
+    try {
 
-    console.log(
-      `Excel: ${EXCEL_FILE}`
-    );
+      await pool.query(
+        "SELECT 1"
+      );
 
-    console.log(
-      `商品シート: ${PRODUCT_SHEET}`
-    );
+      res.json({
 
-    console.log(
-      `PDF directory: ${PDF_DIR}`
-    );
+        success: true,
 
-    console.log(
-      `Japanese font: ${
-        JAPANESE_FONT || "NOT FOUND"
-      }`
-    );
+        database:
+          "connected"
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "DB health check error:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        database:
+          "disconnected"
+
+      });
+
+    }
 
   }
 );
+
+
+// ==============================
+// サーバー起動
+// ==============================
+
+async function startServer() {
+
+  try {
+
+    await checkDatabaseConnection();
+
+    await initializeDatabase();
+
+
+    app.listen(
+      PORT,
+      () => {
+
+        console.log(
+          `Server running on port ${PORT}`
+        );
+
+        console.log(
+          `Excel: ${EXCEL_FILE}`
+        );
+
+        console.log(
+          `商品シート: ${PRODUCT_SHEET}`
+        );
+
+        console.log(
+          `PDF directory: ${PDF_DIR}`
+        );
+
+        console.log(
+          `Japanese font: ${
+            JAPANESE_FONT || "NOT FOUND"
+          }`
+
+        );
+
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "サーバー起動エラー:",
+      error
+    );
+
+    process.exit(1);
+
+  }
+
+}
+
+
+startServer();
