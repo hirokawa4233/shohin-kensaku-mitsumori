@@ -219,6 +219,7 @@ button:disabled {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .pdf-button {
@@ -228,6 +229,34 @@ button:disabled {
 
 .pdf-button:hover {
   background: #082956;
+}
+
+.delete-button {
+  background: #d9534f;
+  color: white;
+}
+
+.delete-button:hover {
+  background: #b52b27;
+}
+
+.keep-button {
+  background: #2e8b57;
+  color: white;
+}
+
+.keep-button:hover {
+  background: #246b45;
+}
+
+.status-message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #eef9f0;
+  color: #176b2c;
+  font-size: 14px;
+  display: none;
 }
 
 @media (max-width: 800px) {
@@ -243,6 +272,14 @@ button:disabled {
 
   .amount {
     text-align: left;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .actions button {
+    width: 100%;
   }
 }
 </style>
@@ -307,10 +344,12 @@ async function loadEstimates() {
       !response.ok ||
       !result.success
     ) {
+
       throw new Error(
         result.message ||
         "見積依頼の取得に失敗しました"
       );
+
     }
 
     const estimates =
@@ -419,8 +458,14 @@ async function loadEstimates() {
                 ).toLocaleString("ja-JP")
               : "";
 
+          const id =
+            String(estimate.id);
+
           return `
-            <div class="card">
+            <div
+              class="card"
+              id="estimate-card-${esc(id)}"
+            >
 
               <div class="card-header">
 
@@ -516,9 +561,7 @@ async function loadEstimates() {
 
                   <input
                     type="text"
-                    id="delivery-${esc(
-                      String(estimate.id)
-                    )}"
+                    id="delivery-${esc(id)}"
                     value="${esc(
                       estimate.delivery || ""
                     )}"
@@ -527,18 +570,34 @@ async function loadEstimates() {
 
                 </div>
 
+                <div
+                  class="status-message"
+                  id="status-${esc(id)}"
+                ></div>
+
                 <div class="actions">
 
                   <button
+                    class="keep-button"
+                    onclick="keepEstimate('${esc(id)}')"
+                  >
+                    ✅ この見積を残す
+                  </button>
+
+                  <button
                     class="pdf-button"
-                    id="pdf-button-${esc(
-                      String(estimate.id)
-                    )}"
-                    onclick="createPdf('${esc(
-                      String(estimate.id)
-                    )}')"
+                    id="pdf-button-${esc(id)}"
+                    onclick="createPdf('${esc(id)}')"
                   >
                     📄 御見積書PDFを作成
+                  </button>
+
+                  <button
+                    class="delete-button"
+                    id="delete-button-${esc(id)}"
+                    onclick="deleteEstimate('${esc(id)}')"
+                  >
+                    🗑️ この見積を削除
                   </button>
 
                 </div>
@@ -564,6 +623,124 @@ async function loadEstimates() {
         ${esc(err.message)}
       </div>
     `;
+
+  }
+
+}
+
+
+/* ========================================
+   見積を残す
+======================================== */
+
+function keepEstimate(id) {
+
+  const status =
+    document.getElementById(
+      `status-${id}`
+    );
+
+  if (!status) {
+    return;
+  }
+
+  status.textContent =
+    "この見積は保存されています。削除するまで残ります。";
+
+  status.style.display =
+    "block";
+
+}
+
+
+/* ========================================
+   見積を削除
+======================================== */
+
+async function deleteEstimate(id) {
+
+  const confirmed =
+    confirm(
+      "この見積依頼を削除しますか？\n\n" +
+      "削除すると、この見積依頼は管理画面から完全に削除されます。\n" +
+      "本当に削除してよろしいですか？"
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  const button =
+    document.getElementById(
+      `delete-button-${id}`
+    );
+
+  const originalText =
+    button?.textContent ||
+    "🗑️ この見積を削除";
+
+  try {
+
+    if (button) {
+
+      button.disabled =
+        true;
+
+      button.textContent =
+        "⏳ 削除しています...";
+
+    }
+
+    const response =
+      await fetch(
+        `/api/estimates/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+
+      throw new Error(
+        result.message ||
+        "見積依頼の削除に失敗しました"
+      );
+
+    }
+
+    alert(
+      "見積依頼を削除しました。"
+    );
+
+    await loadEstimates();
+
+  } catch (error) {
+
+    console.error(
+      "見積削除エラー:",
+      error
+    );
+
+    alert(
+      "見積依頼の削除に失敗しました。\n\n" +
+      error.message
+    );
+
+    if (button) {
+
+      button.disabled =
+        false;
+
+      button.textContent =
+        originalText;
+
+    }
 
   }
 
@@ -665,19 +842,6 @@ async function createPdf(id) {
         }
       );
 
-
-    /*
-      server.js はPDFそのものではなく、
-
-      {
-        success: true,
-        fileName: "...pdf",
-        url: "/pdf/....pdf"
-      }
-
-      を返すので、まずJSONとして受け取る。
-    */
-
     const pdfResult =
       await pdfResponse.json();
 
@@ -717,7 +881,6 @@ async function createPdf(id) {
 
     }
 
-
     const contentType =
       fileResponse.headers.get(
         "content-type"
@@ -734,7 +897,6 @@ async function createPdf(id) {
       );
 
     }
-
 
     const blob =
       await fileResponse.blob();
@@ -761,7 +923,6 @@ async function createPdf(id) {
     link.click();
 
     link.remove();
-
 
     setTimeout(() => {
 
@@ -793,7 +954,6 @@ async function createPdf(id) {
       "御見積書PDFの作成に失敗しました。\n\n" +
       error.message
     );
-
 
   } finally {
 
