@@ -42,10 +42,6 @@ const pool = new Pool({
 // ==============================
 // Excel商品マスタ
 // ==============================
-//
-// ※ 初回の商品データ取り込み用として残してあります。
-// 今後の商品データの保存先はPostgreSQLです。
-// ==============================
 
 const EXCEL_FILE = path.join(
   __dirname,
@@ -232,10 +228,6 @@ async function checkDatabaseConnection() {
 // ==============================
 // Excelから商品データを読み込む
 // ==============================
-//
-// 初回取り込みなどに使用できます。
-// 通常のAPIではPostgreSQLを使用します。
-// ==============================
 
 function loadProductsFromExcel() {
 
@@ -318,6 +310,134 @@ function loadProductsFromExcel() {
         );
 
     });
+
+}
+
+
+// ==============================
+// PostgreSQLへExcel商品を取り込む
+// ==============================
+//
+// PostgreSQLの商品が0件の場合だけ実行。
+// ==============================
+
+async function importProductsIfEmpty() {
+
+  const result =
+    await pool.query(
+      "SELECT COUNT(*) AS count FROM products"
+    );
+
+  const count =
+    Number(
+      result.rows[0].count
+    );
+
+  if (count > 0) {
+
+    console.log(
+      `PostgreSQLの商品データは${count}件あります。Excel取り込みはスキップします。`
+    );
+
+    return;
+
+  }
+
+  console.log(
+    "PostgreSQLの商品データが0件です。Excelから取り込みます。"
+  );
+
+
+  const products =
+    loadProductsFromExcel();
+
+
+  if (
+    products.length === 0
+  ) {
+
+    console.log(
+      "Excelにも商品データがありません。"
+    );
+
+    return;
+
+  }
+
+
+  const client =
+    await pool.connect();
+
+  try {
+
+    await client.query("BEGIN");
+
+
+    for (
+      const product of products
+    ) {
+
+      await client.query(
+        `
+        INSERT INTO products
+        (
+          code,
+          size,
+          a,
+          price,
+          brand,
+          pattern
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+        `,
+        [
+
+          product.code ?? "",
+
+          product.size ?? "",
+
+          product.a ?? "",
+
+          Number(
+            product.price
+          ) || 0,
+
+          product.brand ?? "",
+
+          product.pattern ?? ""
+
+        ]
+      );
+
+    }
+
+
+    await client.query("COMMIT");
+
+
+    console.log(
+      `Excelから${products.length}件の商品を自動取り込みしました。`
+    );
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    throw error;
+
+  } finally {
+
+    client.release();
+
+  }
 
 }
 
@@ -421,10 +541,6 @@ app.get(
 // ==============================
 // 商品データ保存API
 // ==============================
-//
-// products配列をPostgreSQLに保存します。
-// 既存商品は一度削除してから入れ直します。
-// ==============================
 
 app.post(
   "/api/products",
@@ -446,13 +562,11 @@ app.post(
       await client.query("BEGIN");
 
 
-      // 現在の商品データを削除
       await client.query(
         "DELETE FROM products"
       );
 
 
-      // 新しい商品データを登録
       for (
         const product of products
       ) {
@@ -549,11 +663,7 @@ app.post(
 
 
 // ==============================
-// Excel → PostgreSQL 初回取り込みAPI
-// ==============================
-//
-// 必要なときだけPOSTすると、
-// 価格表.xlsmの内容をPostgreSQLへ取り込みます。
+// Excel → PostgreSQL 手動取り込みAPI
 // ==============================
 
 app.post(
@@ -1048,10 +1158,6 @@ app.patch(
 // ==============================
 // 見積依頼削除API
 // ==============================
-//
-// 「削除する」と明示的に呼び出したときだけ削除。
-// 自動削除はしません。
-// ==============================
 
 app.delete(
   "/api/estimates/:id",
@@ -1257,10 +1363,6 @@ app.post(
       };
 
 
-      // ==========================
-      // 納期
-      // ==========================
-
       const delivery =
         String(
           req.body?.delivery ??
@@ -1283,10 +1385,6 @@ app.post(
       }
 
 
-      // ==========================
-      // 納期をDBへ保存
-      // ==========================
-
       await pool.query(
         `
         UPDATE estimates
@@ -1302,10 +1400,6 @@ app.post(
       );
 
 
-      // ==========================
-      // PDFファイル
-      // ==========================
-
       const pdfFileName =
         `御見積書_${estimate.id}.pdf`;
 
@@ -1316,10 +1410,6 @@ app.post(
           pdfFileName
         );
 
-
-      // ==========================
-      // PDF作成
-      // ==========================
 
       const doc =
         new PDFDocument({
@@ -1342,10 +1432,6 @@ app.post(
       );
 
 
-      // ==========================
-      // 日本語フォント
-      // ==========================
-
       if (JAPANESE_FONT) {
 
         doc.font(
@@ -1354,10 +1440,6 @@ app.post(
 
       }
 
-
-      // ==========================
-      // タイトル
-      // ==========================
 
       doc
         .fontSize(28)
@@ -1371,10 +1453,6 @@ app.post(
 
       doc.moveDown(2);
 
-
-      // ==========================
-      // 見積情報
-      // ==========================
 
       doc
         .fontSize(11)
@@ -1406,10 +1484,6 @@ app.post(
 
       doc.moveDown(2);
 
-
-      // ==========================
-      // お客様情報
-      // ==========================
 
       doc
         .fontSize(16)
@@ -1450,10 +1524,6 @@ app.post(
       doc.moveDown(2);
 
 
-      // ==========================
-      // お見積内容
-      // ==========================
-
       doc
         .fontSize(16)
         .text(
@@ -1466,10 +1536,6 @@ app.post(
 
       doc.moveDown(0.8);
 
-
-      // ==========================
-      // 表ヘッダー
-      // ==========================
 
       const headerY =
         doc.y;
@@ -1546,10 +1612,6 @@ app.post(
 
       doc.y += 10;
 
-
-      // ==========================
-      // 商品
-      // ==========================
 
       let total = 0;
 
@@ -1659,10 +1721,6 @@ app.post(
       }
 
 
-      // ==========================
-      // 下線
-      // ==========================
-
       doc
         .moveTo(
           55,
@@ -1678,10 +1736,6 @@ app.post(
       doc.moveDown(1);
 
 
-      // ==========================
-      // 合計金額
-      // ==========================
-
       doc
         .fontSize(18)
         .text(
@@ -1696,10 +1750,6 @@ app.post(
 
       doc.moveDown(2);
 
-
-      // ==========================
-      // 納期
-      // ==========================
 
       doc
         .fontSize(15)
@@ -1724,10 +1774,6 @@ app.post(
       doc.moveDown(2);
 
 
-      // ==========================
-      // 備考
-      // ==========================
-
       doc
         .fontSize(15)
         .text(
@@ -1748,16 +1794,8 @@ app.post(
         );
 
 
-      // ==========================
-      // PDF終了
-      // ==========================
-
       doc.end();
 
-
-      // ==========================
-      // PDF完成後に返す
-      // ==========================
 
       stream.on(
         "finish",
@@ -1917,6 +1955,10 @@ async function startServer() {
 
     await initializeDatabase();
 
+    // 商品データが0件の場合だけ、
+    // Excelから自動でPostgreSQLへ取り込みます。
+    await importProductsIfEmpty();
+
 
     app.listen(
       PORT,
@@ -1942,7 +1984,6 @@ async function startServer() {
           `Japanese font: ${
             JAPANESE_FONT || "NOT FOUND"
           }`
-
         );
 
       }
