@@ -1135,7 +1135,50 @@ app.post(
 
         ]
       );
+      // 管理者へLINE通知
+      const adminUserId =
+        process.env.LINE_ADMIN_USER_ID;
 
+      const channelAccessToken =
+        process.env.LINE_CHANNEL_ACCESS_TOKEN;
+
+      if (adminUserId && channelAccessToken) {
+
+        await fetch(
+          "https://api.line.me/v2/bot/message/push",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization":
+                `Bearer ${channelAccessToken}`
+            },
+
+            body: JSON.stringify({
+              to: adminUserId,
+
+              messages: [
+                {
+                  type: "text",
+
+                  text:
+                    `新しい見積依頼が届きました。\n\n` +
+                    `見積番号：${estimate.id}\n` +
+                    `会社名・氏名：${estimate.company}\n` +
+                    `電話番号：${estimate.phone}\n` +
+                    `メールアドレス：${estimate.email}`
+                }
+              ]
+            })
+          }
+        );
+
+        console.log(
+          "管理者へLINE通知を送信しました。"
+        );
+
+      }
 
       console.log(
         "見積依頼を受け付けました:",
