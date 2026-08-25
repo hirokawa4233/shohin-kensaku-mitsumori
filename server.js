@@ -1,5 +1,6 @@
 const express = require("express");
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 const XLSX = require("xlsx");
 const PDFDocument = require("pdfkit");
@@ -13,7 +14,15 @@ const PORT = process.env.PORT || 3000;
 // 基本設定
 // ==============================
 
-app.use(express.json({ limit: "2mb" }));
+app.use(
+  express.json({
+    limit: "2mb",
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    }
+  })
+);
+
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(__dirname));
@@ -782,11 +791,146 @@ app.post(
   }
 );
 
-
 // ============================================================
 // 見積
 // ============================================================
 
+
+// ============================================================
+// LINE Webhook
+// ============================================================
+
+app.post(
+  "/api/line/webhook",
+  async (req, res) => {
+
+    try {
+
+      const channelSecret =
+        process.env.LINE_CHANNEL_SECRET;
+
+      if (!channelSecret) {
+
+        console.error(
+          "LINE_CHANNEL_SECRET が設定されていません。"
+        );
+
+        return res.sendStatus(500);
+
+      }
+
+
+      const signature =
+        req.headers["x-line-signature"];
+
+      if (!signature || !req.rawBody) {
+
+        console.error(
+          "LINE Webhookの署名または本文がありません。"
+        );
+
+        return res.sendStatus(400);
+
+      }
+
+
+      const expectedSignature =
+        crypto
+          .createHmac(
+            "sha256",
+            channelSecret
+          )
+          .update(req.rawBody)
+          .digest("base64");
+
+
+      const signatureBuffer =
+        Buffer.from(
+          signature,
+          "utf8"
+        );
+
+      const expectedBuffer =
+        Buffer.from(
+          expectedSignature,
+          "utf8"
+        );
+
+
+      if (
+        signatureBuffer.length !==
+        expectedBuffer.length ||
+        !crypto.timingSafeEqual(
+          signatureBuffer,
+          expectedBuffer
+        )
+      ) {
+
+        console.error(
+          "LINE Webhookの署名検証に失敗しました。"
+        );
+
+        return res.sendStatus(401);
+
+      }
+
+
+      const body =
+        req.body || {};
+
+
+      console.log(
+        "LINE Webhook受信:",
+        JSON.stringify(
+          body,
+          null,
+          2
+        )
+      );
+
+
+      const events =
+        Array.isArray(body.events)
+          ? body.events
+          : [];
+
+
+      for (
+        const event of events
+      ) {
+
+        const userId =
+          event.source?.userId;
+
+
+        if (userId) {
+
+          console.log(
+            "LINE User ID:",
+            userId
+          );
+
+        }
+
+      }
+
+
+      res.sendStatus(200);
+
+
+    } catch (error) {
+
+      console.error(
+        "LINE Webhookエラー:",
+        error
+      );
+
+      res.sendStatus(500);
+
+    }
+
+  }
+);
 
 // ==============================
 // 見積データ一覧取得
