@@ -656,7 +656,119 @@ app.get(
 
   }
 );
+// ==============================
+// 見積依頼削除API
+// ==============================
 
+app.delete(
+  "/api/estimates/:id",
+  (req, res) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+      const estimates =
+        loadEstimates();
+
+      const index =
+        estimates.findIndex(
+          (item) =>
+            Number(item.id) === id
+        );
+
+      if (index === -1) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "指定された見積依頼が見つかりません"
+
+        });
+
+      }
+
+      const deletedEstimate =
+        estimates[index];
+
+      estimates.splice(
+        index,
+        1
+      );
+
+      saveEstimates(
+        estimates
+      );
+
+      // ==============================
+      // 作成済みPDFも削除
+      // ==============================
+
+      const pdfFileName =
+        `御見積書_${deletedEstimate.id}.pdf`;
+
+      const pdfPath =
+        path.join(
+          PDF_DIR,
+          pdfFileName
+        );
+
+      if (
+        fs.existsSync(pdfPath)
+      ) {
+
+        fs.unlinkSync(
+          pdfPath
+        );
+
+        console.log(
+          "見積PDFを削除しました:",
+          pdfFileName
+        );
+
+      }
+
+      console.log(
+        "見積依頼を削除しました:",
+        id
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "見積依頼を削除しました",
+
+        id
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "見積削除エラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "見積依頼の削除に失敗しました"
+
+      });
+
+    }
+
+  }
+);
 
 // ==============================
 // 納期連絡を保存するAPI
