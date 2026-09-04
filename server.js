@@ -3,10 +3,35 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 const PDFDocument = require("pdfkit");
-
+const { Pool } = require("pg");
 const app = express();
 const PORT = process.env.PORT || 3000;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+async function initDatabase() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS estimates (
+      id BIGINT PRIMARY KEY,
+      company TEXT,
+      phone TEXT,
+      email TEXT,
+      note TEXT,
+      delivery TEXT,
+      items JSONB,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
+  console.log("PostgreSQL database ready");
+}
+
+initDatabase().catch(err => {
+  console.error("Database initialization error:", err);
+});
 // ==============================
 // 基本設定
 // ==============================
