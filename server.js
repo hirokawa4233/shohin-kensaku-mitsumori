@@ -16,14 +16,37 @@ async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS estimates (
       id BIGINT PRIMARY KEY,
+      access_token TEXT UNIQUE NOT NULL,
+      line_user_id TEXT,
       company TEXT,
       phone TEXT,
       email TEXT,
       note TEXT,
       delivery TEXT,
-      items JSONB,
+      status TEXT NOT NULL DEFAULT 'estimate_requested',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      delivery_updated_at TIMESTAMP,
+      ordered_at TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS estimate_items (
+      id BIGSERIAL PRIMARY KEY,
+      estimate_id BIGINT NOT NULL REFERENCES estimates(id) ON DELETE CASCADE,
+      product_code TEXT,
+      size TEXT,
+      brand TEXT,
+      pattern TEXT,
+      price NUMERIC,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      is_manual BOOLEAN NOT NULL DEFAULT false
+    );
+
+    CREATE TABLE IF NOT EXISTS orders (
+      id BIGSERIAL PRIMARY KEY,
+      estimate_id BIGINT NOT NULL REFERENCES estimates(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'ordered',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
+    );
   `);
 
   console.log("PostgreSQL database ready");
