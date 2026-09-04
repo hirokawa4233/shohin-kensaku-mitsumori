@@ -523,16 +523,70 @@ app.post(
 
       };
 
-      const estimates =
-        loadEstimates();
+    const accessToken = require("crypto")
+  .randomBytes(32)
+  .toString("hex");
 
-      estimates.push(
-        estimate
-      );
+estimate.accessToken = accessToken;
+estimate.status = "estimate_requested";
 
-      saveEstimates(
-        estimates
-      );
+await pool.query(
+  `
+    INSERT INTO estimates (
+      id,
+      access_token,
+      line_user_id,
+      company,
+      phone,
+      email,
+      note,
+      delivery,
+      status,
+      created_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  `,
+  [
+    estimate.id,
+    accessToken,
+    body.lineUserId || null,
+    estimate.company,
+    estimate.phone,
+    estimate.email,
+    estimate.note,
+    estimate.delivery,
+    estimate.status,
+    estimate.createdAt
+  ]
+);
+
+for (const item of estimate.items) {
+  await pool.query(
+    `
+      INSERT INTO estimate_items (
+        estimate_id,
+        product_code,
+        size,
+        brand,
+        pattern,
+        price,
+        quantity,
+        is_manual
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `,
+    [
+      estimate.id,
+      item.code || "",
+      item.size || "",
+      item.brand || "",
+      item.pattern || "",
+      Number(item.price) || 0,
+      Number(item.qty) || 1,
+      false
+    ]
+  );
+}
 
 
       // ==============================
