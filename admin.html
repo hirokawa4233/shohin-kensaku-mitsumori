@@ -249,6 +249,15 @@ button:disabled {
   background: #246b45;
 }
 
+.order-button {
+  background: #f0a000;
+  color: white;
+}
+
+.order-button:hover {
+  background: #d88e00;
+}
+
 .status-message {
   margin-top: 12px;
   padding: 10px 12px;
@@ -578,6 +587,13 @@ async function loadEstimates() {
                 <div class="actions">
 
                   <button
+                    class="order-button"
+                    onclick="showOrderUrl('${esc(id)}', '${esc(estimate.accessToken || "")}')"
+                  >
+                    🔗 注文用URLを表示
+                  </button>
+
+                  <button
                     class="keep-button"
                     onclick="keepEstimate('${esc(id)}')"
                   >
@@ -625,6 +641,35 @@ async function loadEstimates() {
     `;
 
   }
+
+}
+
+
+/* ========================================
+   注文用URLを表示
+======================================== */
+
+function showOrderUrl(id, accessToken) {
+
+  if (!accessToken) {
+
+    alert(
+      "この見積には注文用URLがありません。"
+    );
+
+    return;
+  }
+
+  const baseUrl =
+    window.location.origin;
+
+  const orderUrl =
+    `${baseUrl}/estimate/${encodeURIComponent(accessToken)}`;
+
+  prompt(
+    "お客様へ送る注文用URLです。",
+    orderUrl
+  );
 
 }
 
