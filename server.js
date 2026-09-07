@@ -2470,7 +2470,177 @@ app.get(
 
   }
 );
+// ==============================
+// 管理画面用
+// 見積商品の編集・追加・削除・保存API
+// ==============================
 
+app.put(
+  "/api/estimates/:id/items",
+  async (req, res) => {
+
+    const client = await pool.connect();
+
+    try {
+
+      const estimateId =
+        String(req.params.id || "").trim();
+
+      const items =
+        Array.isArray(req.body.items)
+          ? req.body.items
+          : null;
+
+
+      if (!estimateId || !items) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "見積IDまたは商品データが正しくありません"
+
+        });
+
+      }
+
+
+      await client.query("BEGIN");
+
+
+      // 見積が存在するか確認
+      const estimateResult =
+        await client.query(
+          `
+            SELECT id
+            FROM estimates
+            WHERE id = $1
+          `,
+          [estimateId]
+        );
+
+
+      if (
+        estimateResult.rowCount === 0
+      ) {
+
+        await client.query("ROLLBACK");
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "見積データが見つかりません"
+
+        });
+
+      }
+
+
+      // 現在の商品を一度削除
+      await client.query(
+        `
+          DELETE FROM estimate_items
+          WHERE estimate_id = $1
+        `,
+        [estimateId]
+      );
+
+
+      // 編集後の商品を登録
+      for (
+        const item of items
+      ) {
+
+        await client.query(
+          `
+            INSERT INTO estimate_items (
+              estimate_id,
+              product_code,
+              size,
+              brand,
+              pattern,
+              price,
+              quantity,
+              is_manual
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4,
+              $5,
+              $6,
+              $7,
+              $8
+            )
+          `,
+          [
+            estimateId,
+            item.code || "",
+            item.size || "",
+            item.brand || "",
+            item.pattern || "",
+            Number(item.price) || 0,
+            Number(item.qty) || 1,
+            item.isManual === true
+          ]
+        );
+
+      }
+
+
+      await client.query("COMMIT");
+
+
+      // 保存後の最新データを返す
+      const estimate =
+        await getEstimateById(
+          estimateId
+        );
+
+
+      return res.json({
+
+        success: true,
+
+        message:
+          "見積内容を保存しました",
+
+        estimate
+
+      });
+
+
+    } catch (error) {
+
+      await client.query("ROLLBACK");
+
+      console.error(
+        "見積商品の保存エラー:",
+        error
+      );
+
+      return res.status(500).json({
+
+        success: false,
+
+        message:
+          "見積内容の保存に失敗しました"
+
+      });
+
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
 
 // ==============================
 // サーバー起動
