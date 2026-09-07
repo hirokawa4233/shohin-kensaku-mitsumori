@@ -32,10 +32,14 @@ const pool = new Pool({
 
 async function initDatabase() {
 
+  // ==============================
+  // estimates テーブル
+  // ==============================
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS estimates (
       id BIGINT PRIMARY KEY,
-      access_token TEXT UNIQUE NOT NULL,
+      access_token TEXT,
       line_user_id TEXT,
       company TEXT,
       phone TEXT,
@@ -47,7 +51,83 @@ async function initDatabase() {
       delivery_updated_at TIMESTAMP,
       ordered_at TIMESTAMP
     );
+  `);
 
+
+  // ==============================
+  // 既存DBへ access_token を追加
+  // ==============================
+
+  await pool.query(`
+    ALTER TABLE estimates
+    ADD COLUMN IF NOT EXISTS access_token TEXT;
+  `);
+
+
+  // ==============================
+  // 既存の見積に
+  // 注文用URLトークンを発行
+  // ==============================
+
+  const existingEstimates =
+    await pool.query(`
+      SELECT id
+      FROM estimates
+      WHERE access_token IS NULL
+    `);
+
+
+  for (
+    const estimate of existingEstimates.rows
+  ) {
+
+    const accessToken =
+      crypto
+        .randomBytes(32)
+        .toString("hex");
+
+
+    await pool.query(
+      `
+        UPDATE estimates
+        SET access_token = $1
+        WHERE id = $2
+      `,
+      [
+        accessToken,
+        estimate.id
+      ]
+    );
+
+  }
+
+
+  // ==============================
+  // access_token を必須にする
+  // ==============================
+
+  await pool.query(`
+    ALTER TABLE estimates
+    ALTER COLUMN access_token SET NOT NULL;
+  `);
+
+
+  // ==============================
+  // access_token の重複を防止
+  // ==============================
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS
+    estimates_access_token_unique
+    ON estimates(access_token);
+  `);
+
+
+  // ==============================
+  // estimate_items テーブル
+  // ==============================
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS estimate_items (
       id BIGSERIAL PRIMARY KEY,
       estimate_id BIGINT NOT NULL
@@ -61,7 +141,14 @@ async function initDatabase() {
       quantity INTEGER NOT NULL DEFAULT 1,
       is_manual BOOLEAN NOT NULL DEFAULT false
     );
+  `);
 
+
+  // ==============================
+  // orders テーブル
+  // ==============================
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS orders (
       id BIGSERIAL PRIMARY KEY,
       estimate_id BIGINT NOT NULL
@@ -72,9 +159,11 @@ async function initDatabase() {
     );
   `);
 
+
   console.log(
     "PostgreSQL database ready"
   );
+
 }
 
 
@@ -174,6 +263,7 @@ function findJapaneseFont() {
 
   ];
 
+
   for (
     const font of fontCandidates
   ) {
@@ -193,11 +283,13 @@ function findJapaneseFont() {
 
   }
 
+
   console.log(
     "Japanese font: NOT FOUND"
   );
 
   return null;
+
 }
 
 
@@ -221,6 +313,7 @@ function loadProducts() {
 
   }
 
+
   const workbook =
     XLSX.readFile(
       EXCEL_FILE,
@@ -228,6 +321,7 @@ function loadProducts() {
         cellDates: false
       }
     );
+
 
   if (
     !workbook.SheetNames.includes(
@@ -241,10 +335,12 @@ function loadProducts() {
 
   }
 
+
   const sheet =
     workbook.Sheets[
       PRODUCT_SHEET
     ];
+
 
   const rows =
     XLSX.utils.sheet_to_json(
@@ -254,6 +350,7 @@ function loadProducts() {
         raw: true
       }
     );
+
 
   const products =
     rows
@@ -294,7 +391,9 @@ function loadProducts() {
 
       });
 
+
   return products;
+
 }
 
 
@@ -311,6 +410,7 @@ app.get(
       const products =
         loadProducts();
 
+
       res.json({
 
         success: true,
@@ -322,12 +422,14 @@ app.get(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "商品データ読み込みエラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -361,6 +463,7 @@ app.post(
           ? req.body.products
           : [];
 
+
       const workbook =
         XLSX.readFile(
           EXCEL_FILE,
@@ -369,6 +472,7 @@ app.post(
             bookVBA: true
           }
         );
+
 
       if (
         !workbook.SheetNames.includes(
@@ -381,6 +485,7 @@ app.post(
         );
 
       }
+
 
       const rows =
         products.map(
@@ -407,15 +512,18 @@ app.post(
           })
         );
 
+
       const newSheet =
         XLSX.utils.json_to_sheet(
           rows
         );
 
+
       workbook.Sheets[
         PRODUCT_SHEET
       ] =
         newSheet;
+
 
       XLSX.writeFile(
         workbook,
@@ -425,9 +533,11 @@ app.post(
         }
       );
 
+
       console.log(
         "商品データをExcelに保存しました"
       );
+
 
       res.json({
 
@@ -438,12 +548,14 @@ app.post(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "商品データ保存エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -459,6 +571,8 @@ app.post(
 
   }
 );
+
+
 // ==============================
 // 見積依頼受付API
 // ==============================
@@ -472,36 +586,46 @@ app.post(
       const body =
         req.body || {};
 
+
       const estimateId =
         Date.now();
+
 
       const accessToken =
         crypto
           .randomBytes(32)
           .toString("hex");
 
+
       const company =
         body.company || "";
+
 
       const phone =
         body.phone || "";
 
+
       const email =
         body.email || "";
+
 
       const note =
         body.note || "";
 
+
       const delivery =
         body.delivery || "";
+
 
       const items =
         Array.isArray(body.items)
           ? body.items
           : [];
 
+
       const createdAt =
         new Date();
+
 
       // ==============================
       // 見積本体を保存
@@ -548,6 +672,7 @@ app.post(
         ]
       );
 
+
       // ==============================
       // 商品明細を保存
       // ==============================
@@ -593,16 +718,19 @@ app.post(
 
       }
 
+
       // ==============================
       // お客様専用URL
       // ==============================
 
       const baseUrl =
         process.env.BASE_URL ||
-        `https://shohin-kensaku-mitsumori-development.onrender.com`;
+        "https://shohin-kensaku-mitsumori-development.onrender.com";
+
 
       const estimateUrl =
         `${baseUrl}/estimate/${accessToken}`;
+
 
       // ==============================
       // 管理者へLINE通知
@@ -611,8 +739,10 @@ app.post(
       const adminUserId =
         process.env.LINE_ADMIN_USER_ID;
 
+
       const channelAccessToken =
         process.env.LINE_CHANNEL_ACCESS_TOKEN;
+
 
       if (
         adminUserId &&
@@ -625,14 +755,17 @@ app.post(
             await fetch(
               "https://api.line.me/v2/bot/message/push",
               {
+
                 method: "POST",
 
                 headers: {
+
                   "Content-Type":
                     "application/json",
 
                   "Authorization":
                     `Bearer ${channelAccessToken}`
+
                 },
 
                 body:
@@ -642,8 +775,11 @@ app.post(
                       adminUserId,
 
                     messages: [
+
                       {
-                        type: "text",
+
+                        type:
+                          "text",
 
                         text:
                           `新しい見積依頼が届きました。\n\n` +
@@ -652,7 +788,9 @@ app.post(
                           `電話番号：${phone}\n` +
                           `メールアドレス：${email}\n\n` +
                           `お客様専用URL：\n${estimateUrl}`
+
                       }
+
                     ]
 
                   })
@@ -660,12 +798,14 @@ app.post(
               }
             );
 
+
           if (
             !lineResponse.ok
           ) {
 
             const lineError =
               await lineResponse.text();
+
 
             console.error(
               "LINE通知エラー:",
@@ -681,6 +821,7 @@ app.post(
 
           }
 
+
         } catch (lineError) {
 
           console.error(
@@ -692,6 +833,7 @@ app.post(
 
       }
 
+
       // ==============================
       // 完了ログ
       // ==============================
@@ -701,10 +843,12 @@ app.post(
         estimateId
       );
 
+
       console.log(
         "お客様専用URL:",
         estimateUrl
       );
+
 
       // ==============================
       // お客様へ返す
@@ -726,12 +870,14 @@ app.post(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "見積保存エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -746,6 +892,8 @@ app.post(
 
   }
 );
+
+
 // ==============================
 // 管理画面用
 // 見積依頼一覧取得API
@@ -776,6 +924,7 @@ app.get(
           ORDER BY created_at DESC
         `);
 
+
       const itemsResult =
         await pool.query(`
           SELECT
@@ -789,6 +938,7 @@ app.get(
             is_manual AS "isManual"
           FROM estimate_items
         `);
+
 
       const estimates =
         estimatesResult.rows.map(
@@ -833,6 +983,7 @@ app.get(
           })
         );
 
+
       res.json({
 
         success: true,
@@ -844,12 +995,14 @@ app.get(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "見積一覧取得エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -864,6 +1017,7 @@ app.get(
 
   }
 );
+
 
 // ==============================
 // お客様専用URL
@@ -881,6 +1035,7 @@ app.get(
           req.params.accessToken || ""
         ).trim();
 
+
       if (!accessToken) {
 
         return res.status(400).json({
@@ -894,6 +1049,7 @@ app.get(
 
       }
 
+
       const result =
         await pool.query(
           `
@@ -904,6 +1060,7 @@ app.get(
           `,
           [accessToken]
         );
+
 
       if (
         result.rows.length === 0
@@ -920,13 +1077,16 @@ app.get(
 
       }
 
+
       const estimateId =
         result.rows[0].id;
+
 
       const estimate =
         await getEstimateById(
           estimateId
         );
+
 
       if (!estimate) {
 
@@ -941,6 +1101,7 @@ app.get(
 
       }
 
+
       res.json({
 
         success: true,
@@ -949,12 +1110,14 @@ app.get(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "専用注文URLデータ取得エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -969,6 +1132,8 @@ app.get(
 
   }
 );
+
+
 // ==============================
 // お客様専用URL
 // 注文確定API
@@ -985,6 +1150,7 @@ app.post(
           req.params.accessToken || ""
         ).trim();
 
+
       if (!accessToken) {
 
         return res.status(400).json({
@@ -997,6 +1163,7 @@ app.post(
         });
 
       }
+
 
       // ==============================
       // 注文対象の見積を取得
@@ -1015,6 +1182,7 @@ app.post(
           [accessToken]
         );
 
+
       if (
         result.rows.length === 0
       ) {
@@ -1030,8 +1198,10 @@ app.post(
 
       }
 
+
       const estimate =
         result.rows[0];
+
 
       // ==============================
       // 二重注文を防止
@@ -1052,12 +1222,14 @@ app.post(
 
       }
 
+
       // ==============================
       // 注文確定
       // ==============================
 
       const orderedAt =
         new Date();
+
 
       const updateResult =
         await pool.query(
@@ -1087,8 +1259,34 @@ app.post(
           ]
         );
 
+
       const orderedEstimate =
         updateResult.rows[0];
+
+
+      // ==============================
+      // orders テーブルへ記録
+      // ==============================
+
+      await pool.query(
+        `
+        INSERT INTO orders (
+          estimate_id,
+          status,
+          created_at
+        )
+        VALUES (
+          $1,
+          'ordered',
+          $2
+        )
+        `,
+        [
+          estimate.id,
+          orderedAt
+        ]
+      );
+
 
       // ==============================
       // 管理者へLINE通知
@@ -1097,8 +1295,10 @@ app.post(
       const adminUserId =
         process.env.LINE_ADMIN_USER_ID;
 
+
       const channelAccessToken =
         process.env.LINE_CHANNEL_ACCESS_TOKEN;
+
 
       if (
         adminUserId &&
@@ -1124,70 +1324,77 @@ app.post(
 
                 },
 
-                body: JSON.stringify({
+                body:
+                  JSON.stringify({
 
-                  to:
-                    adminUserId,
+                    to:
+                      adminUserId,
 
-                  messages: [
+                    messages: [
 
-                    {
+                      {
 
-                      type: "text",
+                        type:
+                          "text",
 
-                      text:
-                        `🛒 注文が入りました！\n\n` +
-                        `見積番号：${orderedEstimate.id}\n` +
-                        `会社名・氏名：${orderedEstimate.company}\n` +
-                        `電話番号：${orderedEstimate.phone}\n` +
-                        `メールアドレス：${orderedEstimate.email}\n` +
-                        `注文日時：${orderedAt.toLocaleString("ja-JP")}`
+                        text:
+                          `🛒 注文が入りました！\n\n` +
+                          `見積番号：${orderedEstimate.id}\n` +
+                          `会社名・氏名：${orderedEstimate.company}\n` +
+                          `電話番号：${orderedEstimate.phone}\n` +
+                          `メールアドレス：${orderedEstimate.email}\n` +
+                          `注文日時：${orderedAt.toLocaleString("ja-JP")}`
 
-                    }
+                      }
 
-                  ]
+                    ]
 
-                })
+                  })
 
               }
             );
 
-            if (
-              !lineResponse.ok
-            ) {
 
-              const lineError =
-                await lineResponse.text();
+          if (
+            !lineResponse.ok
+          ) {
 
-              console.error(
-                "注文LINE通知エラー:",
-                lineResponse.status,
-                lineError
-              );
+            const lineError =
+              await lineResponse.text();
 
-            } else {
-
-              console.log(
-                "注文受付LINE通知を送信しました。"
-              );
-
-            }
-
-          } catch (lineError) {
 
             console.error(
-              "注文LINE通知送信エラー:",
+              "注文LINE通知エラー:",
+              lineResponse.status,
               lineError
+            );
+
+          } else {
+
+            console.log(
+              "注文受付LINE通知を送信しました。"
             );
 
           }
 
+
+        } catch (lineError) {
+
+          console.error(
+            "注文LINE通知送信エラー:",
+            lineError
+          );
+
+        }
+
       }
+
 
       console.log(
         "注文を受け付けました:",
         orderedEstimate.id
       );
+
 
       res.json({
 
@@ -1201,12 +1408,14 @@ app.post(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "注文受付エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -1221,6 +1430,8 @@ app.post(
 
   }
 );
+
+
 // ==============================
 // 見積依頼削除API
 // ==============================
@@ -1236,6 +1447,7 @@ app.delete(
           req.params.id
         );
 
+
       const result =
         await pool.query(
           `
@@ -1245,6 +1457,7 @@ app.delete(
           `,
           [id]
         );
+
 
       if (
         result.rowCount === 0
@@ -1261,6 +1474,7 @@ app.delete(
 
       }
 
+
       // ==============================
       // 作成済みPDFも削除
       // ==============================
@@ -1268,11 +1482,13 @@ app.delete(
       const pdfFileName =
         `御見積書_${id}.pdf`;
 
+
       const pdfPath =
         path.join(
           PDF_DIR,
           pdfFileName
         );
+
 
       if (
         fs.existsSync(pdfPath)
@@ -1282,6 +1498,7 @@ app.delete(
           pdfPath
         );
 
+
         console.log(
           "見積PDFを削除しました:",
           pdfFileName
@@ -1289,10 +1506,12 @@ app.delete(
 
       }
 
+
       console.log(
         "見積依頼を削除しました:",
         id
       );
+
 
       res.json({
 
@@ -1305,12 +1524,14 @@ app.delete(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "見積削除エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -1342,10 +1563,12 @@ app.patch(
           req.params.id
         );
 
+
       const delivery =
         String(
           req.body?.delivery || ""
         ).trim();
+
 
       if (!delivery) {
 
@@ -1360,8 +1583,10 @@ app.patch(
 
       }
 
+
       const updatedAt =
         new Date();
+
 
       const result =
         await pool.query(
@@ -1393,6 +1618,7 @@ app.patch(
           ]
         );
 
+
       if (
         result.rowCount === 0
       ) {
@@ -1408,13 +1634,16 @@ app.patch(
 
       }
 
+
       const estimate =
         result.rows[0];
+
 
       console.log(
         "納期連絡を更新しました:",
         id
       );
+
 
       res.json({
 
@@ -1427,12 +1656,14 @@ app.patch(
 
       });
 
+
     } catch (error) {
 
       console.error(
         "納期保存エラー:",
         error
       );
+
 
       res.status(500).json({
 
@@ -1493,6 +1724,7 @@ async function getEstimateById(id) {
       [id]
     );
 
+
   if (
     estimateResult.rowCount === 0
   ) {
@@ -1501,8 +1733,10 @@ async function getEstimateById(id) {
 
   }
 
+
   const estimate =
     estimateResult.rows[0];
+
 
   const itemsResult =
     await pool.query(
@@ -1521,6 +1755,7 @@ async function getEstimateById(id) {
       `,
       [id]
     );
+
 
   estimate.items =
     itemsResult.rows.map(
@@ -1550,7 +1785,9 @@ async function getEstimateById(id) {
       })
     );
 
+
   return estimate;
+
 }
 
 
@@ -1569,8 +1806,10 @@ app.post(
           req.params.id
         );
 
+
       const estimate =
         await getEstimateById(id);
+
 
       if (!estimate) {
 
@@ -1585,6 +1824,7 @@ app.post(
 
       }
 
+
       // ==========================
       // 納期
       // ==========================
@@ -1595,6 +1835,7 @@ app.post(
           estimate.delivery ??
           ""
         ).trim();
+
 
       if (!delivery) {
 
@@ -1608,6 +1849,7 @@ app.post(
         });
 
       }
+
 
       // ==========================
       // 納期をDBへ保存
@@ -1628,11 +1870,14 @@ app.post(
         ]
       );
 
+
       estimate.delivery =
         delivery;
 
+
       estimate.status =
         "estimate_ready";
+
 
       // ==========================
       // PDFファイル
@@ -1641,11 +1886,13 @@ app.post(
       const pdfFileName =
         `御見積書_${estimate.id}.pdf`;
 
+
       const pdfPath =
         path.join(
           PDF_DIR,
           pdfFileName
         );
+
 
       // ==========================
       // PDF作成
@@ -1660,14 +1907,17 @@ app.post(
 
         });
 
+
       const stream =
         fs.createWriteStream(
           pdfPath
         );
 
+
       doc.pipe(
         stream
       );
+
 
       // ==========================
       // 日本語フォント
@@ -1683,6 +1933,7 @@ app.post(
 
       }
 
+
       // ==========================
       // タイトル
       // ==========================
@@ -1696,7 +1947,9 @@ app.post(
           }
         );
 
+
       doc.moveDown(2);
+
 
       // ==========================
       // 見積情報
@@ -1711,6 +1964,7 @@ app.post(
           }
         );
 
+
       const createdDate =
         estimate.createdAt
           ? new Date(
@@ -1720,6 +1974,7 @@ app.post(
             )
           : "";
 
+
       doc.text(
         `受付日時：${createdDate}`,
         {
@@ -1727,7 +1982,9 @@ app.post(
         }
       );
 
+
       doc.moveDown(2);
+
 
       // ==========================
       // お客様情報
@@ -1742,12 +1999,15 @@ app.post(
           }
         );
 
+
       doc.moveDown(0.5);
+
 
       const customerName =
         String(
           estimate.company || ""
         ).trim();
+
 
       doc
         .fontSize(12)
@@ -1755,15 +2015,19 @@ app.post(
           `会社名・氏名：${customerName} 様`
         );
 
+
       doc.text(
         `電話番号：${estimate.phone || ""}`
       );
+
 
       doc.text(
         `メールアドレス：${estimate.email || ""}`
       );
 
+
       doc.moveDown(2);
+
 
       // ==========================
       // お見積内容
@@ -1778,7 +2042,9 @@ app.post(
           }
         );
 
+
       doc.moveDown(0.8);
+
 
       // ==========================
       // 表ヘッダー
@@ -1786,6 +2052,7 @@ app.post(
 
       const headerY =
         doc.y;
+
 
       doc
         .fontSize(10)
@@ -1798,6 +2065,7 @@ app.post(
           }
         );
 
+
       doc.text(
         "サイズ",
         155,
@@ -1806,6 +2074,7 @@ app.post(
           width: 100
         }
       );
+
 
       doc.text(
         "ブランド・パターン",
@@ -1816,6 +2085,7 @@ app.post(
         }
       );
 
+
       doc.text(
         "数量",
         425,
@@ -1824,6 +2094,7 @@ app.post(
           width: 45
         }
       );
+
 
       doc.text(
         "金額",
@@ -1835,8 +2106,10 @@ app.post(
         }
       );
 
+
       doc.y =
         headerY + 24;
+
 
       doc
         .moveTo(
@@ -1849,7 +2122,9 @@ app.post(
         )
         .stroke();
 
+
       doc.y += 10;
+
 
       // ==========================
       // 商品
@@ -1857,12 +2132,14 @@ app.post(
 
       let total = 0;
 
+
       const items =
         Array.isArray(
           estimate.items
         )
           ? estimate.items
           : [];
+
 
       for (
         const item of items
@@ -1873,19 +2150,24 @@ app.post(
             item.price
           ) || 0;
 
+
         const qty =
           Number(
             item.qty
           ) || 0;
 
+
         const subtotal =
           price * qty;
+
 
         total +=
           subtotal;
 
+
         const startY =
           doc.y;
+
 
         doc
           .fontSize(10)
@@ -1900,6 +2182,7 @@ app.post(
             }
           );
 
+
         doc.text(
           String(
             item.size || ""
@@ -1910,6 +2193,7 @@ app.post(
             width: 100
           }
         );
+
 
         doc.text(
           `${String(
@@ -1924,6 +2208,7 @@ app.post(
           }
         );
 
+
         doc.text(
           `${qty}個`,
           425,
@@ -1932,6 +2217,7 @@ app.post(
             width: 45
           }
         );
+
 
         doc.text(
           `${formatNumber(
@@ -1945,10 +2231,12 @@ app.post(
           }
         );
 
+
         doc.y =
           startY + 24;
 
       }
+
 
       // ==========================
       // 下線
@@ -1965,7 +2253,9 @@ app.post(
         )
         .stroke();
 
+
       doc.moveDown(1);
+
 
       // ==========================
       // 合計金額
@@ -1982,7 +2272,9 @@ app.post(
           }
         );
 
+
       doc.moveDown(2);
+
 
       // ==========================
       // 税別表記
@@ -1994,7 +2286,9 @@ app.post(
           "※表示価格は税別です。"
         );
 
+
       doc.moveDown(2);
+
 
       // ==========================
       // 納期
@@ -2009,7 +2303,9 @@ app.post(
           }
         );
 
+
       doc.moveDown(0.5);
+
 
       doc
         .fontSize(12)
@@ -2017,7 +2313,9 @@ app.post(
           delivery
         );
 
+
       doc.moveDown(2);
+
 
       // ==========================
       // 備考
@@ -2032,7 +2330,9 @@ app.post(
           }
         );
 
+
       doc.moveDown(0.5);
+
 
       doc
         .fontSize(12)
@@ -2040,11 +2340,13 @@ app.post(
           estimate.note || "なし"
         );
 
+
       // ==========================
       // PDF終了
       // ==========================
 
       doc.end();
+
 
       // ==========================
       // PDF完成後に返す
@@ -2058,6 +2360,7 @@ app.post(
             "御見積書PDFを作成しました:",
             pdfFileName
           );
+
 
           res.json({
 
@@ -2079,6 +2382,7 @@ app.post(
         }
       );
 
+
       stream.on(
         "error",
         (error) => {
@@ -2087,6 +2391,7 @@ app.post(
             "PDF保存エラー:",
             error
           );
+
 
           if (
             !res.headersSent
@@ -2106,12 +2411,14 @@ app.post(
         }
       );
 
+
     } catch (error) {
 
       console.error(
         "PDF作成エラー:",
         error
       );
+
 
       if (
         !res.headersSent
@@ -2145,6 +2452,7 @@ app.use(
   )
 );
 
+
 // ==============================
 // お客様専用 見積・注文ページ
 // ==============================
@@ -2162,6 +2470,8 @@ app.get(
 
   }
 );
+
+
 // ==============================
 // サーバー起動
 // ==============================
@@ -2174,17 +2484,21 @@ app.listen(
       `Server running on port ${PORT}`
     );
 
+
     console.log(
       `Excel: ${EXCEL_FILE}`
     );
+
 
     console.log(
       `商品シート: ${PRODUCT_SHEET}`
     );
 
+
     console.log(
       `PDF directory: ${PDF_DIR}`
     );
+
 
     console.log(
       `Japanese font: ${
