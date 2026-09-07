@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>お客様専用 見積確認ページ</title>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans JP",
+    sans-serif;
+
+  background: #f4f7fb;
+  color: #172033;
+}
+
+header {
+  background: #0b3570;
+  color: white;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+header p {
+  margin: 8px 0 0;
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.container {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  padding: 22px;
+
+  box-shadow:
+    0 2px 10px rgba(0,0,0,0.06);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #0b3570;
+  margin-bottom: 18px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px 25px;
+}
+
+.info-box {
+  border-bottom: 1px solid #e6e9ef;
+  padding-bottom: 10px;
+}
+
+.label {
+  display: block;
+  color: #687386;
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.value {
+  font-size: 15px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.item {
+  border: 1px solid #e0e5ec;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+}
+
+.item-grid {
+  display: grid;
+  grid-template-columns:
+    1fr 1fr 1fr 1fr;
+
+  gap: 12px;
+}
+
+.item-code {
+  font-weight: bold;
+}
+
+.amount {
+  text-align: right;
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 2px solid #e0e5ec;
+}
+
+.delivery {
+  background: #fff9e8;
+  border: 1px solid #f0d98c;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.delivery-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.delivery-text {
+  font-size: 16px;
+}
+
+.order-area {
+  text-align: center;
+  padding: 25px 10px;
+}
+
+.order-button {
+  width: 100%;
+  max-width: 500px;
+
+  border: none;
+  border-radius: 8px;
+
+  padding: 15px 20px;
+
+  background: #2e8b57;
+  color: white;
+
+  font-size: 17px;
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.order-button:hover {
+  background: #246b45;
+}
+
+.order-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.notice {
+  margin-top: 15px;
+  color: #687386;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.loading {
+  background: white;
+  border-radius: 12px;
+  padding: 50px 20px;
+  text-align: center;
+  color: #687386;
+}
+
+.error {
+  background: #fff0f0;
+  color: #b00020;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.success {
+  background: #eef9f0;
+  color: #176b2c;
+  border-radius: 10px;
+  padding: 25px 20px;
+  text-align: center;
+}
+
+.success h2 {
+  margin-top: 0;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 700px) {
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .item-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .amount {
+    text-align: left;
+  }
+
+}
+
+@media (max-width: 450px) {
+
+  .item-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+  <h1>📋 お見積内容の確認</h1>
+
+  <p>
+    内容をご確認のうえ、ご注文ください。
+  </p>
+
+</header>
+
+
+<div class="container">
+
+
+  <!-- 読み込み中 -->
+
+  <div
+    id="loading"
+    class="loading"
+  >
+
+    ⏳ 見積内容を読み込んでいます...
+
+  </div>
+
+
+  <!-- エラー -->
+
+  <div
+    id="error"
+    class="error hidden"
+  >
+
+  </div>
+
+
+  <!-- メイン -->
+
+  <div
+    id="content"
+    class="hidden"
+  >
+
+
+    <!-- お客様情報 -->
+
+    <div class="card">
+
+      <div class="card-title">
+        👤 お客様情報
+      </div>
+
+      <div class="info-grid">
+
+
+        <div class="info-box">
+
+          <span class="label">
+            会社名・氏名
+          </span>
+
+          <div
+            id="company"
+            class="value"
+          ></div>
+
+        </div>
+
+
+        <div class="info-box">
+
+          <span class="label">
+            電話番号
+          </span>
+
+          <div
+            id="phone"
+            class="value"
+          ></div>
+
+        </div>
+
+
+        <div class="info-box">
+
+          <span class="label">
+            メールアドレス
+          </span>
+
+          <div
+            id="email"
+            class="value"
+          ></div>
+
+        </div>
+
+
+        <div class="info-box">
+
+          <span class="label">
+            見積番号
+          </span>
+
+          <div
+            id="estimate-id"
+            class="value"
+          ></div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+    <!-- 商品 -->
+
+    <div class="card">
+
+      <div class="card-title">
+        🛒 お見積商品
+      </div>
+
+      <div id="items"></div>
+
+      <div
+        id="total"
+        class="amount"
+      ></div>
+
+    </div>
+
+
+    <!-- 納期 -->
+
+    <div
+      id="delivery-card"
+      class="card hidden"
+    >
+
+      <div class="card-title">
+        🚚 納期について
+      </div>
+
+      <div class="delivery">
+
+        <div class="delivery-title">
+          納期連絡
+        </div>
+
+        <div
+          id="delivery"
+          class="delivery-text"
+        ></div>
+
+      </div>
+
+    </div>
+
+
+    <!-- 備考 -->
+
+    <div
+      id="note-card"
+      class="card hidden"
+    >
+
+      <div class="card-title">
+        📝 備考
+      </div>
+
+      <div
+        id="note"
+        class="value"
+      ></div>
+
+    </div>
+
+
+    <!-- 注文 -->
+
+    <div class="card">
+
+      <div class="order-area">
+
+        <button
+          id="order-button"
+          class="order-button"
+          onclick="confirmOrder()"
+        >
+          🛒 この内容で注文する
+        </button>
+
+        <div class="notice">
+
+          「この内容で注文する」を押すと、
+          この見積内容での注文を確定します。<br>
+
+          ご注文後の変更については、
+          お手数ですが弊社までご連絡ください。
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+
+  <!-- 注文完了 -->
+
+  <div
+    id="success"
+    class="success hidden"
+  >
+
+    <h2>
+      ✅ ご注文を受け付けました
+    </h2>
+
+    <p>
+      ご注文ありがとうございます。
+    </p>
+
+    <p>
+      内容を確認のうえ、対応いたします。
+    </p>
+
+    <div
+      id="success-estimate-id"
+      style="margin-top:15px;font-weight:bold;"
+    ></div>
+
+  </div>
+
+
+</div>
+
+
+<script>
+
+/* ========================================
+   専用URLからアクセストークンを取得
+======================================== */
+
+function getAccessToken() {
+
+  const path =
+    window.location.pathname;
+
+  const parts =
+    path.split("/");
+
+  const index =
+    parts.indexOf("estimate");
+
+  if (
+    index === -1 ||
+    !parts[index + 1]
+  ) {
+
+    return "";
+
+  }
+
+  return decodeURIComponent(
+    parts[index + 1]
+  );
+
+}
+
+
+/* ========================================
+   HTMLエスケープ
+======================================== */
+
+function esc(value) {
+
+  return String(value ?? "")
+    .replace(
+      /[&<>"']/g,
+      function(match) {
+
+        return {
+
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+
+        }[match];
+
+      }
+    );
+
+}
+
+
+/* ========================================
+   金額表示
+======================================== */
+
+function fmt(value) {
+
+  const number =
+    Number(value) || 0;
+
+  return number.toLocaleString(
+    "ja-JP"
+  );
+
+}
+
+
+/* ========================================
+   見積内容を読み込む
+======================================== */
+
+async function loadEstimate() {
+
+  const loading =
+    document.getElementById(
+      "loading"
+    );
+
+  const error =
+    document.getElementById(
+      "error"
+    );
+
+  const content =
+    document.getElementById(
+      "content"
+    );
+
+
+  const accessToken =
+    getAccessToken();
+
+
+  if (!accessToken) {
+
+    loading.classList.add(
+      "hidden"
+    );
+
+    error.textContent =
+      "注文URLが正しくありません。";
+
+    error.classList.remove(
+      "hidden"
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    const response =
+      await fetch(
+        `/api/order/${encodeURIComponent(accessToken)}`
+      );
+
+
+    const result =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+
+      throw new Error(
+        result.message ||
+        "見積内容の取得に失敗しました"
+      );
+
+    }
+
+
+    const estimate =
+      result.estimate;
+
+
+    if (!estimate) {
+
+      throw new Error(
+        "見積データが見つかりません"
+      );
+
+    }
+
+
+    /* ------------------------------------
+       お客様情報
+    ------------------------------------ */
+
+    document.getElementById(
+      "company"
+    ).textContent =
+      estimate.company || "";
+
+
+    document.getElementById(
+      "phone"
+    ).textContent =
+      estimate.phone || "";
+
+
+    document.getElementById(
+      "email"
+    ).textContent =
+      estimate.email || "";
+
+
+    document.getElementById(
+      "estimate-id"
+    ).textContent =
+      estimate.id || "";
+
+
+    /* ------------------------------------
+       商品
+    ------------------------------------ */
+
+    const items =
+      Array.isArray(
+        estimate.items
+      )
+        ? estimate.items
+        : [];
+
+
+    const itemsContainer =
+      document.getElementById(
+        "items"
+      );
+
+
+    let total = 0;
+
+
+    if (!items.length) {
+
+      itemsContainer.innerHTML = `
+        <div class="error">
+          商品情報がありません。
+        </div>
+      `;
+
+    } else {
+
+      itemsContainer.innerHTML =
+        items.map(
+          function(item) {
+
+            const price =
+              Number(
+                item.price
+              ) || 0;
+
+
+            const quantity =
+              Number(
+                item.quantity ??
+                item.qty
+              ) || 0;
+
+
+            const subtotal =
+              price * quantity;
+
+
+            total += subtotal;
+
+
+            const code =
+              item.code ??
+              item.productCode ??
+              item.product_code ??
+              "";
+
+
+            return `
+
+              <div class="item">
+
+                <div class="item-grid">
+
+
+                  <div>
+
+                    <span class="label">
+                      品番
+                    </span>
+
+                    <div class="item-code">
+                      ${esc(code)}
+                    </div>
+
+                  </div>
+
+
+                  <div>
+
+                    <span class="label">
+                      サイズ
+                    </span>
+
+                    <div>
+                      ${esc(item.size || "")}
+                    </div>
+
+                  </div>
+
+
+                  <div>
+
+                    <span class="label">
+                      ブランド・パターン
+                    </span>
+
+                    <div>
+                      ${esc(item.brand || "")}
+                      ${esc(item.pattern || "")}
+                    </div>
+
+                  </div>
+
+
+                  <div>
+
+                    <span class="label">
+                      数量
+                    </span>
+
+                    <div>
+                      ${quantity}個
+                    </div>
+
+                  </div>
+
+
+                </div>
+
+
+                <div
+                  style="
+                    text-align:right;
+                    margin-top:12px;
+                    font-weight:bold;
+                  "
+                >
+
+                  ${fmt(price)}円 ×
+                  ${quantity}個
+                  ＝
+                  ${fmt(subtotal)}円
+
+                </div>
+
+              </div>
+
+            `;
+
+          }
+        ).join("");
+
+    }
+
+
+    document.getElementById(
+      "total"
+    ).textContent =
+      `合計金額：${fmt(total)}円`;
+
+
+    /* ------------------------------------
+       納期
+    ------------------------------------ */
+
+    if (
+      estimate.delivery
+    ) {
+
+      document.getElementById(
+        "delivery"
+      ).textContent =
+        estimate.delivery;
+
+
+      document.getElementById(
+        "delivery-card"
+      ).classList.remove(
+        "hidden"
+      );
+
+    }
+
+
+    /* ------------------------------------
+       備考
+    ------------------------------------ */
+
+    if (
+      estimate.note
+    ) {
+
+      document.getElementById(
+        "note"
+      ).textContent =
+        estimate.note;
+
+
+      document.getElementById(
+        "note-card"
+      ).classList.remove(
+        "hidden"
+      );
+
+    }
+
+
+    /* ------------------------------------
+       すでに注文済みの場合
+    ------------------------------------ */
+
+    if (
+      estimate.status === "ordered"
+    ) {
+
+      const button =
+        document.getElementById(
+          "order-button"
+        );
+
+
+      button.disabled =
+        true;
+
+
+      button.textContent =
+        "✅ この注文はすでに受付済みです";
+
+
+      button.style.background =
+        "#777";
+
+    }
+
+
+    loading.classList.add(
+      "hidden"
+    );
+
+
+    content.classList.remove(
+      "hidden"
+    );
+
+
+  } catch (err) {
+
+    console.error(
+      "見積内容取得エラー:",
+      err
+    );
+
+
+    loading.classList.add(
+      "hidden"
+    );
+
+
+    error.textContent =
+      err.message ||
+      "見積内容を取得できませんでした";
+
+
+    error.classList.remove(
+      "hidden"
+    );
+
+  }
+
+}
+
+
+/* ========================================
+   注文確認
+======================================== */
+
+async function confirmOrder() {
+
+  const confirmed =
+    confirm(
+      "この見積内容で注文を確定しますか？\n\n" +
+      "内容をご確認のうえ「OK」を押してください。"
+    );
+
+
+  if (!confirmed) {
+
+    return;
+
+  }
+
+
+  const button =
+    document.getElementById(
+      "order-button"
+    );
+
+
+  const accessToken =
+    getAccessToken();
+
+
+  if (!accessToken) {
+
+    alert(
+      "注文URLが正しくありません。"
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    button.disabled =
+      true;
+
+
+    button.textContent =
+      "⏳ 注文を受け付けています...";
+
+
+    const response =
+      await fetch(
+        `/api/order/${encodeURIComponent(accessToken)}`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          }
+        }
+      );
+
+
+    const result =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+
+      throw new Error(
+        result.message ||
+        "注文の受付に失敗しました"
+      );
+
+    }
+
+
+    /* ------------------------------------
+       注文完了画面
+    ------------------------------------ */
+
+    const estimate =
+      result.estimate;
+
+
+    document.getElementById(
+      "content"
+    ).classList.add(
+      "hidden"
+    );
+
+
+    document.getElementById(
+      "success"
+    ).classList.remove(
+      "hidden"
+    );
+
+
+    document.getElementById(
+      "success-estimate-id"
+    ).textContent =
+      `見積番号：${estimate.id}`;
+
+
+  } catch (error) {
+
+    console.error(
+      "注文エラー:",
+      error
+    );
+
+
+    alert(
+      "注文の受付に失敗しました。\n\n" +
+      error.message
+    );
+
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "🛒 この内容で注文する";
+
+  }
+
+}
+
+
+/* ========================================
+   初回読み込み
+======================================== */
+
+loadEstimate();
+
+</script>
+
+</body>
+</html>
