@@ -271,6 +271,64 @@ button:disabled {
   font-size: 15px;
 }
 
+/* ========================================
+   お客様専用URL
+======================================== */
+
+.url-area {
+  margin-top: 20px;
+  padding: 18px;
+  background: #f7faff;
+  border: 1px solid #d7e3f2;
+  border-radius: 8px;
+}
+
+.url-area label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #0b3570;
+}
+
+.url-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #ccd3df;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: #0b3570;
+}
+
+.url-create-button {
+  background: #6f42c1;
+  color: white;
+}
+
+.url-create-button:hover {
+  background: #59339d;
+}
+
+.copy-url-button {
+  background: #6c757d;
+  color: white;
+}
+
+.copy-url-button:hover {
+  background: #545b62;
+}
+
 .actions {
   margin-top: 20px;
   display: flex;
@@ -334,6 +392,7 @@ button:disabled {
 }
 
 @media (max-width: 800px) {
+
   .info-grid,
   .item-grid {
     grid-template-columns: 1fr;
@@ -357,6 +416,15 @@ button:disabled {
   }
 
   .edit-buttons button {
+    width: 100%;
+  }
+
+  .url-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .url-row button {
     width: 100%;
   }
 }
@@ -623,6 +691,11 @@ async function loadEstimates() {
               `
               : "";
 
+          const orderUrl =
+            estimate.accessToken
+              ? `${window.location.origin}/estimate/${encodeURIComponent(estimate.accessToken)}`
+              : "";
+
           return `
 
             <div
@@ -693,6 +766,47 @@ async function loadEstimates() {
                         estimate.note || "なし"
                       )}
                     </div>
+
+                  </div>
+
+                </div>
+
+
+                <!-- ==============================
+                     お客様専用URL
+                =============================== -->
+
+                <div class="url-area">
+
+                  <label>
+                    🔗 お客様専用URL
+                  </label>
+
+                  <div class="url-row">
+
+                    <input
+                      type="text"
+                      class="url-input"
+                      id="url-${esc(id)}"
+                      value="${esc(orderUrl)}"
+                      readonly
+                    >
+
+                    <button
+                      type="button"
+                      class="url-create-button"
+                      onclick="showOrderUrl('${esc(id)}', '${esc(estimate.accessToken || "")}')"
+                    >
+                      🔗 URLを作成
+                    </button>
+
+                    <button
+                      type="button"
+                      class="copy-url-button"
+                      onclick="copyEstimateUrl('${esc(id)}')"
+                    >
+                      📋 コピー
+                    </button>
 
                   </div>
 
@@ -862,6 +976,112 @@ async function loadEstimates() {
       </div>
 
     `;
+
+  }
+
+}
+
+
+/* ========================================
+   お客様専用URLを表示
+======================================== */
+
+function showOrderUrl(id, accessToken) {
+
+  if (!accessToken) {
+
+    alert(
+      "この見積には注文用URLがありません。"
+    );
+
+    return;
+
+  }
+
+
+  const baseUrl =
+    window.location.origin;
+
+
+  const orderUrl =
+    `${baseUrl}/estimate/${encodeURIComponent(accessToken)}`;
+
+
+  const input =
+    document.getElementById(
+      `url-${id}`
+    );
+
+
+  if (input) {
+
+    input.value =
+      orderUrl;
+
+  }
+
+
+  prompt(
+    "お客様へ送る注文用URLです。",
+    orderUrl
+  );
+
+}
+
+
+/* ========================================
+   お客様専用URLをコピー
+======================================== */
+
+async function copyEstimateUrl(id) {
+
+  const input =
+    document.getElementById(
+      `url-${id}`
+    );
+
+
+  if (!input || !input.value) {
+
+    alert(
+      "お客様専用URLがありません。"
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    await navigator.clipboard.writeText(
+      input.value
+    );
+
+
+    alert(
+      "お客様専用URLをコピーしました。"
+    );
+
+
+  } catch (error) {
+
+    input.focus();
+    input.select();
+    input.setSelectionRange(
+      0,
+      input.value.length
+    );
+
+
+    document.execCommand(
+      "copy"
+    );
+
+
+    alert(
+      "お客様専用URLをコピーしました。"
+    );
 
   }
 
