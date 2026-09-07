@@ -257,7 +257,15 @@ button:disabled {
 .order-button:hover {
   background: #d88e00;
 }
-
+.order-status {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #eef9f0;
+  color: #176b2c;
+  font-size: 15px;
+  font-weight: bold;
+}
 .status-message {
   margin-top: 12px;
   padding: 10px 12px;
@@ -469,7 +477,10 @@ async function loadEstimates() {
 
           const id =
             String(estimate.id);
-
+const statusHtml =
+  estimate.status === "ordered"
+    ? `<div class="order-status">🟢 注文済み</div>`
+    : "";
           return `
             <div
               class="card"
@@ -561,7 +572,7 @@ async function loadEstimates() {
                   合計金額：
                   ${fmt(total)}円
                 </div>
-
+${statusHtml}
                 <div class="delivery-area">
 
                   <label>
