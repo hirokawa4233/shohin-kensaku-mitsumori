@@ -99,14 +99,6 @@ button:disabled {
   margin-bottom: 20px;
 }
 
-.success-message {
-  background: #eef9f0;
-  color: #176b2c;
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
 .card {
   background: white;
   border-radius: 12px;
@@ -169,27 +161,92 @@ button:disabled {
   margin: 20px 0 10px;
 }
 
+.items-list {
+  margin-bottom: 10px;
+}
+
 .item {
   border: 1px solid #e0e5ec;
   border-radius: 8px;
   padding: 14px;
   margin-bottom: 10px;
+  background: #fff;
 }
 
 .item-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 10px;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.item-code {
+.item input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccd3df;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.item input:focus {
+  outline: none;
+  border-color: #0b3570;
+  box-shadow: 0 0 0 2px rgba(11,53,112,0.1);
+}
+
+.item-subtotal {
+  padding: 10px;
   font-weight: bold;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.item-delete-button {
+  background: #d9534f;
+  color: white;
+  margin-top: 18px;
+}
+
+.item-delete-button:hover {
+  background: #b52b27;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.add-item-button {
+  background: #5c6bc0;
+  color: white;
+}
+
+.add-item-button:hover {
+  background: #4655a5;
+}
+
+.save-items-button {
+  background: #198754;
+  color: white;
+}
+
+.save-items-button:hover {
+  background: #146c43;
 }
 
 .amount {
   text-align: right;
   font-weight: bold;
+  font-size: 17px;
   margin-top: 15px;
+}
+
+.estimate-total {
+  font-size: 20px;
 }
 
 .delivery-area {
@@ -212,6 +269,64 @@ button:disabled {
   border: 1px solid #ccd3df;
   border-radius: 6px;
   font-size: 15px;
+}
+
+/* ========================================
+   お客様専用URL
+======================================== */
+
+.url-area {
+  margin-top: 20px;
+  padding: 18px;
+  background: #f7faff;
+  border: 1px solid #d7e3f2;
+  border-radius: 8px;
+}
+
+.url-area label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #0b3570;
+}
+
+.url-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #ccd3df;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: #0b3570;
+}
+
+.url-create-button {
+  background: #6f42c1;
+  color: white;
+}
+
+.url-create-button:hover {
+  background: #59339d;
+}
+
+.copy-url-button {
+  background: #6c757d;
+  color: white;
+}
+
+.copy-url-button:hover {
+  background: #545b62;
 }
 
 .actions {
@@ -249,6 +364,16 @@ button:disabled {
   background: #246b45;
 }
 
+.order-status {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #eef9f0;
+  color: #176b2c;
+  font-size: 15px;
+  font-weight: bold;
+}
+
 .status-message {
   margin-top: 12px;
   padding: 10px 12px;
@@ -259,7 +384,15 @@ button:disabled {
   display: none;
 }
 
+@media (max-width: 1000px) {
+  .item-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 800px) {
+
   .info-grid,
   .item-grid {
     grid-template-columns: 1fr;
@@ -281,6 +414,19 @@ button:disabled {
   .actions button {
     width: 100%;
   }
+
+  .edit-buttons button {
+    width: 100%;
+  }
+
+  .url-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .url-row button {
+    width: 100%;
+  }
 }
 </style>
 </head>
@@ -289,12 +435,13 @@ button:disabled {
 
 <header>
   <h1>📋 見積依頼管理</h1>
-  <p>受け付けた見積依頼を確認します</p>
+  <p>受け付けた見積依頼を確認・編集します</p>
 </header>
 
 <div class="container">
 
   <div class="toolbar">
+
     <div class="count" id="count">
       見積依頼を読み込み中...
     </div>
@@ -305,9 +452,11 @@ button:disabled {
     >
       🔄 最新情報に更新
     </button>
+
   </div>
 
   <div id="error"></div>
+
   <div id="list"></div>
 
 </div>
@@ -397,51 +546,123 @@ async function loadEstimates() {
               total += subtotal;
 
               return `
-                <div class="item">
+                <div
+                  class="item"
+                  data-is-manual="${item.isManual === true ? "true" : "false"}"
+                >
 
                   <div class="item-grid">
 
                     <div>
+
                       <span class="label">
                         品番
                       </span>
 
-                      <div class="item-code">
-                        ${esc(item.code)}
-                      </div>
+                      <input
+                        type="text"
+                        class="edit-item-code"
+                        value="${esc(item.code)}"
+                      >
+
                     </div>
 
                     <div>
+
                       <span class="label">
                         サイズ
                       </span>
 
-                      <div>
-                        ${esc(item.size)}
-                      </div>
+                      <input
+                        type="text"
+                        class="edit-item-size"
+                        value="${esc(item.size)}"
+                      >
+
                     </div>
 
                     <div>
+
                       <span class="label">
-                        ブランド・パターン
+                        ブランド
                       </span>
 
-                      <div>
-                        ${esc(item.brand)}
-                        ${esc(item.pattern)}
-                      </div>
+                      <input
+                        type="text"
+                        class="edit-item-brand"
+                        value="${esc(item.brand)}"
+                      >
+
                     </div>
 
                     <div>
+
                       <span class="label">
-                        数量・金額
+                        パターン
                       </span>
 
-                      <div>
-                        ${qty}個
-                        /
+                      <input
+                        type="text"
+                        class="edit-item-pattern"
+                        value="${esc(item.pattern)}"
+                      >
+
+                    </div>
+
+                    <div>
+
+                      <span class="label">
+                        数量
+                      </span>
+
+                      <input
+                        type="number"
+                        class="edit-item-qty"
+                        value="${qty}"
+                        min="1"
+                        step="1"
+                      >
+
+                    </div>
+
+                    <div>
+
+                      <span class="label">
+                        単価
+                      </span>
+
+                      <input
+                        type="number"
+                        class="edit-item-price"
+                        value="${price}"
+                        min="0"
+                        step="1"
+                      >
+
+                    </div>
+
+                    <div>
+
+                      <span class="label">
+                        小計
+                      </span>
+
+                      <div class="item-subtotal">
                         ${fmt(subtotal)}円
                       </div>
+
+                    </div>
+
+                    <div>
+
+                      <button
+                        type="button"
+                        class="item-delete-button"
+                        onclick="removeEditItem(this)"
+                      >
+                        🗑️ 商品を削除
+                      </button>
+
                     </div>
 
                   </div>
@@ -461,7 +682,22 @@ async function loadEstimates() {
           const id =
             String(estimate.id);
 
+          const statusHtml =
+            estimate.status === "ordered"
+              ? `
+                <div class="order-status">
+                  🟢 注文済み
+                </div>
+              `
+              : "";
+
+          const orderUrl =
+            estimate.accessToken
+              ? `${window.location.origin}/estimate/${encodeURIComponent(estimate.accessToken)}`
+              : "";
+
           return `
+
             <div
               class="card"
               id="estimate-card-${esc(id)}"
@@ -535,23 +771,106 @@ async function loadEstimates() {
 
                 </div>
 
+
+                <!-- ==============================
+                     お客様専用URL
+                =============================== -->
+
+                <div class="url-area">
+
+                  <label>
+                    🔗 お客様専用URL
+                  </label>
+
+                  <div class="url-row">
+
+                    <input
+                      type="text"
+                      class="url-input"
+                      id="url-${esc(id)}"
+                      value="${esc(orderUrl)}"
+                      readonly
+                    >
+
+                    <button
+                      type="button"
+                      class="url-create-button"
+                      onclick="showOrderUrl('${esc(id)}', '${esc(estimate.accessToken || "")}')"
+                    >
+                      🔗 URLを作成
+                    </button>
+
+                    <button
+                      type="button"
+                      class="copy-url-button"
+                      onclick="copyEstimateUrl('${esc(id)}')"
+                    >
+                      📋 コピー
+                    </button>
+
+                  </div>
+
+                </div>
+
+
                 <div class="items-title">
                   🛒 見積依頼された商品
                 </div>
 
-                ${
-                  itemHtml ||
-                  `
-                    <div class="empty">
-                      商品情報がありません。
-                    </div>
-                  `
-                }
+
+                <div
+                  class="items-list"
+                  id="items-${esc(id)}"
+                >
+
+                  ${
+                    itemHtml ||
+                    `
+                      <div
+                        class="empty item-empty"
+                      >
+                        商品情報がありません。
+                      </div>
+                    `
+                  }
+
+                </div>
+
+
+                <div class="edit-buttons">
+
+                  <button
+                    type="button"
+                    class="add-item-button"
+                    onclick="addEditItem('${esc(id)}')"
+                  >
+                    ➕ 商品を追加
+                  </button>
+
+                  <button
+                    type="button"
+                    class="save-items-button"
+                    onclick="saveEstimateItems('${esc(id)}')"
+                  >
+                    💾 見積内容を保存
+                  </button>
+
+                </div>
+
 
                 <div class="amount">
+
                   合計金額：
-                  ${fmt(total)}円
+                  <span class="estimate-total">
+                    ${fmt(total)}
+                  </span>
+                  円
+
                 </div>
+
+
+                ${statusHtml}
+
 
                 <div class="delivery-area">
 
@@ -570,10 +889,12 @@ async function loadEstimates() {
 
                 </div>
 
+
                 <div
                   class="status-message"
                   id="status-${esc(id)}"
                 ></div>
+
 
                 <div class="actions">
 
@@ -605,10 +926,37 @@ async function loadEstimates() {
               </div>
 
             </div>
+
           `;
 
         })
         .join("");
+
+
+    /* ------------------------------------
+       金額変更時の自動計算
+    ------------------------------------ */
+
+    document
+      .querySelectorAll(
+        ".edit-item-price, .edit-item-qty"
+      )
+      .forEach(input => {
+
+        input.addEventListener(
+          "input",
+          function() {
+
+            const card =
+              this.closest(".card");
+
+            updateEditTotals(card);
+
+          }
+        );
+
+      });
+
 
   } catch (err) {
 
@@ -618,11 +966,616 @@ async function loadEstimates() {
       "見積依頼を取得できませんでした";
 
     error.innerHTML = `
+
       <div class="error">
+
         見積依頼の読み込みに失敗しました。<br>
+
         ${esc(err.message)}
+
       </div>
+
     `;
+
+  }
+
+}
+
+
+/* ========================================
+   お客様専用URLを表示
+======================================== */
+
+function showOrderUrl(id, accessToken) {
+
+  if (!accessToken) {
+
+    alert(
+      "この見積には注文用URLがありません。"
+    );
+
+    return;
+
+  }
+
+
+  const baseUrl =
+    window.location.origin;
+
+
+  const orderUrl =
+    `${baseUrl}/estimate/${encodeURIComponent(accessToken)}`;
+
+
+  const input =
+    document.getElementById(
+      `url-${id}`
+    );
+
+
+  if (input) {
+
+    input.value =
+      orderUrl;
+
+  }
+
+
+  prompt(
+    "お客様へ送る注文用URLです。",
+    orderUrl
+  );
+
+}
+
+
+/* ========================================
+   お客様専用URLをコピー
+======================================== */
+
+async function copyEstimateUrl(id) {
+
+  const input =
+    document.getElementById(
+      `url-${id}`
+    );
+
+
+  if (!input || !input.value) {
+
+    alert(
+      "お客様専用URLがありません。"
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    await navigator.clipboard.writeText(
+      input.value
+    );
+
+
+    alert(
+      "お客様専用URLをコピーしました。"
+    );
+
+
+  } catch (error) {
+
+    input.focus();
+    input.select();
+    input.setSelectionRange(
+      0,
+      input.value.length
+    );
+
+
+    document.execCommand(
+      "copy"
+    );
+
+
+    alert(
+      "お客様専用URLをコピーしました。"
+    );
+
+  }
+
+}
+
+
+/* ========================================
+   合計金額を再計算
+======================================== */
+
+function updateEditTotals(card) {
+
+  if (!card) {
+    return;
+  }
+
+  let total = 0;
+
+  const items =
+    card.querySelectorAll(
+      ".items-list .item"
+    );
+
+  items.forEach(item => {
+
+    const price =
+      Number(
+        item.querySelector(
+          ".edit-item-price"
+        )?.value
+      ) || 0;
+
+    const qty =
+      Number(
+        item.querySelector(
+          ".edit-item-qty"
+        )?.value
+      ) || 0;
+
+    const subtotal =
+      price * qty;
+
+    total += subtotal;
+
+    const subtotalElement =
+      item.querySelector(
+        ".item-subtotal"
+      );
+
+    if (subtotalElement) {
+
+      subtotalElement.textContent =
+        `${fmt(subtotal)}円`;
+
+    }
+
+  });
+
+
+  const totalElement =
+    card.querySelector(
+      ".estimate-total"
+    );
+
+  if (totalElement) {
+
+    totalElement.textContent =
+      fmt(total);
+
+  }
+
+}
+
+
+/* ========================================
+   商品を追加
+======================================== */
+
+function addEditItem(id) {
+
+  const list =
+    document.getElementById(
+      `items-${id}`
+    );
+
+  if (!list) {
+    return;
+  }
+
+
+  const empty =
+    list.querySelector(
+      ".item-empty"
+    );
+
+  if (empty) {
+    empty.remove();
+  }
+
+
+  const item =
+    document.createElement("div");
+
+  item.className = "item";
+
+  item.dataset.isManual =
+    "true";
+
+
+  item.innerHTML = `
+
+    <div class="item-grid">
+
+      <div>
+
+        <span class="label">
+          品番
+        </span>
+
+        <input
+          type="text"
+          class="edit-item-code"
+          value=""
+          placeholder="品番"
+        >
+
+      </div>
+
+      <div>
+
+        <span class="label">
+          サイズ
+        </span>
+
+        <input
+          type="text"
+          class="edit-item-size"
+          value=""
+          placeholder="サイズ"
+        >
+
+      </div>
+
+      <div>
+
+        <span class="label">
+          ブランド
+        </span>
+
+        <input
+          type="text"
+          class="edit-item-brand"
+          value=""
+          placeholder="ブランド"
+        >
+
+      </div>
+
+      <div>
+
+        <span class="label">
+          パターン
+        </span>
+
+        <input
+          type="text"
+          class="edit-item-pattern"
+          value=""
+          placeholder="パターン"
+        >
+
+      </div>
+
+      <div>
+
+        <span class="label">
+          数量
+        </span>
+
+        <input
+          type="number"
+          class="edit-item-qty"
+          value="1"
+          min="1"
+          step="1"
+        >
+
+      </div>
+
+      <div>
+
+        <span class="label">
+          単価
+        </span>
+
+        <input
+          type="number"
+          class="edit-item-price"
+          value="0"
+          min="0"
+          step="1"
+        >
+
+      </div>
+
+      <div>
+
+        <span class="label">
+          小計
+        </span>
+
+        <div class="item-subtotal">
+          0円
+        </div>
+
+      </div>
+
+      <div>
+
+        <button
+          type="button"
+          class="item-delete-button"
+          onclick="removeEditItem(this)"
+        >
+          🗑️ 商品を削除
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  list.appendChild(item);
+
+
+  item
+    .querySelectorAll(
+      ".edit-item-price, .edit-item-qty"
+    )
+    .forEach(input => {
+
+      input.addEventListener(
+        "input",
+        function() {
+
+          updateEditTotals(
+            this.closest(".card")
+          );
+
+        }
+      );
+
+    });
+
+
+  const card =
+    list.closest(".card");
+
+  updateEditTotals(card);
+
+
+  item
+    .querySelector(
+      ".edit-item-code"
+    )
+    ?.focus();
+
+}
+
+
+/* ========================================
+   商品を削除
+======================================== */
+
+function removeEditItem(button) {
+
+  const item =
+    button.closest(".item");
+
+  if (!item) {
+    return;
+  }
+
+
+  const card =
+    item.closest(".card");
+
+
+  item.remove();
+
+
+  updateEditTotals(card);
+
+}
+
+
+/* ========================================
+   見積内容を保存
+======================================== */
+
+async function saveEstimateItems(id) {
+
+  const card =
+    document.getElementById(
+      `estimate-card-${id}`
+    );
+
+  if (!card) {
+    return;
+  }
+
+
+  const button =
+    card.querySelector(
+      ".save-items-button"
+    );
+
+
+  const itemElements =
+    card.querySelectorAll(
+      ".items-list .item"
+    );
+
+
+  const items =
+    Array.from(itemElements)
+      .map(item => {
+
+        const qtyValue =
+          Number(
+            item.querySelector(
+              ".edit-item-qty"
+            )?.value
+          );
+
+        const priceValue =
+          Number(
+            item.querySelector(
+              ".edit-item-price"
+            )?.value
+          );
+
+
+        return {
+
+          code:
+            item.querySelector(
+              ".edit-item-code"
+            )?.value.trim() || "",
+
+          size:
+            item.querySelector(
+              ".edit-item-size"
+            )?.value.trim() || "",
+
+          brand:
+            item.querySelector(
+              ".edit-item-brand"
+            )?.value.trim() || "",
+
+          pattern:
+            item.querySelector(
+              ".edit-item-pattern"
+            )?.value.trim() || "",
+
+          qty:
+            Number.isFinite(qtyValue) &&
+            qtyValue >= 1
+              ? Math.floor(qtyValue)
+              : 1,
+
+          price:
+            Number.isFinite(priceValue) &&
+            priceValue >= 0
+              ? priceValue
+              : 0,
+
+          isManual:
+            item.dataset.isManual === "true"
+
+        };
+
+      });
+
+
+  const confirmed =
+    confirm(
+      "この見積内容を保存しますか？\n\n" +
+      "保存すると、注文ページにもこの内容が反映されます。"
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const originalText =
+    button?.textContent ||
+    "💾 見積内容を保存";
+
+
+  try {
+
+    if (button) {
+
+      button.disabled = true;
+
+      button.textContent =
+        "⏳ 保存しています...";
+
+    }
+
+
+    const response =
+      await fetch(
+        `/api/estimates/${encodeURIComponent(id)}/items`,
+        {
+
+          method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              items
+            })
+
+        }
+      );
+
+
+    const result =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+
+      throw new Error(
+        result.message ||
+        "見積内容の保存に失敗しました"
+      );
+
+    }
+
+
+    alert(
+      "見積内容を保存しました。\n\n" +
+      "注文ページにも最新の内容が反映されます。"
+    );
+
+
+    await loadEstimates();
+
+
+  } catch (error) {
+
+    console.error(
+      "見積内容保存エラー:",
+      error
+    );
+
+
+    alert(
+      "見積内容の保存に失敗しました。\n\n" +
+      error.message
+    );
+
+
+  } finally {
+
+    const currentButton =
+      document.querySelector(
+        `#estimate-card-${CSS.escape(id)} .save-items-button`
+      );
+
+
+    if (currentButton) {
+
+      currentButton.disabled =
+        false;
+
+      currentButton.textContent =
+        originalText;
+
+    }
 
   }
 
@@ -640,9 +1593,11 @@ function keepEstimate(id) {
       `status-${id}`
     );
 
+
   if (!status) {
     return;
   }
+
 
   status.textContent =
     "この見積は保存されています。削除するまで残ります。";
@@ -666,30 +1621,34 @@ async function deleteEstimate(id) {
       "本当に削除してよろしいですか？"
     );
 
+
   if (!confirmed) {
     return;
   }
+
 
   const button =
     document.getElementById(
       `delete-button-${id}`
     );
 
+
   const originalText =
     button?.textContent ||
     "🗑️ この見積を削除";
+
 
   try {
 
     if (button) {
 
-      button.disabled =
-        true;
+      button.disabled = true;
 
       button.textContent =
         "⏳ 削除しています...";
 
     }
+
 
     const response =
       await fetch(
@@ -699,8 +1658,10 @@ async function deleteEstimate(id) {
         }
       );
 
+
     const result =
       await response.json();
+
 
     if (
       !response.ok ||
@@ -714,11 +1675,14 @@ async function deleteEstimate(id) {
 
     }
 
+
     alert(
       "見積依頼を削除しました。"
     );
 
+
     await loadEstimates();
+
 
   } catch (error) {
 
@@ -727,10 +1691,12 @@ async function deleteEstimate(id) {
       error
     );
 
+
     alert(
       "見積依頼の削除に失敗しました。\n\n" +
       error.message
     );
+
 
     if (button) {
 
@@ -758,13 +1724,16 @@ async function createPdf(id) {
       `delivery-${id}`
     );
 
+
   const button =
     document.getElementById(
       `pdf-button-${id}`
     );
 
+
   const delivery =
     input?.value.trim() || "";
+
 
   if (!delivery) {
 
@@ -775,11 +1744,14 @@ async function createPdf(id) {
     input?.focus();
 
     return;
+
   }
+
 
   const originalText =
     button?.textContent ||
     "📄 御見積書PDFを作成";
+
 
   try {
 
@@ -801,6 +1773,7 @@ async function createPdf(id) {
       await fetch(
         `/api/estimates/${encodeURIComponent(id)}/delivery`,
         {
+
           method: "PATCH",
 
           headers: {
@@ -808,14 +1781,18 @@ async function createPdf(id) {
               "application/json"
           },
 
-          body: JSON.stringify({
-            delivery
-          })
+          body:
+            JSON.stringify({
+              delivery
+            })
+
         }
       );
 
+
     const deliveryResult =
       await deliveryResponse.json();
+
 
     if (
       !deliveryResponse.ok ||
@@ -842,8 +1819,10 @@ async function createPdf(id) {
         }
       );
 
+
     const pdfResult =
       await pdfResponse.json();
+
 
     if (
       !pdfResponse.ok ||
@@ -856,6 +1835,7 @@ async function createPdf(id) {
       );
 
     }
+
 
     if (!pdfResult.url) {
 
@@ -871,7 +1851,10 @@ async function createPdf(id) {
     ------------------------------------ */
 
     const fileResponse =
-      await fetch(pdfResult.url);
+      await fetch(
+        pdfResult.url
+      );
+
 
     if (!fileResponse.ok) {
 
@@ -881,10 +1864,12 @@ async function createPdf(id) {
 
     }
 
+
     const contentType =
       fileResponse.headers.get(
         "content-type"
       ) || "";
+
 
     if (
       !contentType.includes(
@@ -898,6 +1883,7 @@ async function createPdf(id) {
 
     }
 
+
     const blob =
       await fileResponse.blob();
 
@@ -907,26 +1893,39 @@ async function createPdf(id) {
     ------------------------------------ */
 
     const url =
-      window.URL.createObjectURL(blob);
+      window.URL.createObjectURL(
+        blob
+      );
+
 
     const link =
       document.createElement("a");
 
+
     link.href = url;
+
 
     link.download =
       pdfResult.fileName ||
       `御見積書_${id}.pdf`;
 
-    document.body.appendChild(link);
+
+    document.body.appendChild(
+      link
+    );
+
 
     link.click();
 
+
     link.remove();
+
 
     setTimeout(() => {
 
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(
+        url
+      );
 
     }, 10000);
 
@@ -950,10 +1949,12 @@ async function createPdf(id) {
       error
     );
 
+
     alert(
       "御見積書PDFの作成に失敗しました。\n\n" +
       error.message
     );
+
 
   } finally {
 
@@ -961,6 +1962,7 @@ async function createPdf(id) {
       document.getElementById(
         `pdf-button-${id}`
       );
+
 
     if (currentButton) {
 
@@ -986,6 +1988,7 @@ function fmt(value) {
   const number =
     Number(value) || 0;
 
+
   return number.toLocaleString(
     "ja-JP"
   );
@@ -1007,9 +2010,13 @@ function esc(value) {
         return {
 
           "&": "&amp;",
+
           "<": "&lt;",
+
           ">": "&gt;",
+
           '"': "&quot;",
+
           "'": "&#39;"
 
         }[match];
