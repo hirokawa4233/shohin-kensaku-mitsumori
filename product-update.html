@@ -500,21 +500,68 @@ async function saveProducts() {
       "現在の商品データを保存しますか？"
     )
   ) {
-
     return;
-
   }
 
-  /*
-    現時点では保存APIがまだありません。
+  try {
 
-    server.js に更新APIを追加した後、
-    ここからExcelへ保存します。
-  */
+    showMessage(
+      "商品データを保存しています……"
+    );
 
-  showMessage(
-    "保存機能は次の工程で接続します。現在はExcelを変更していません。"
-  );
+    const response =
+      await fetch(
+        "/api/products",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              products
+            })
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+
+      throw new Error(
+        data.message ||
+        "商品データの保存に失敗しました"
+      );
+
+    }
+
+
+    showMessage(
+      "✅ 商品データを保存しました！"
+    );
+
+  } catch (error) {
+
+    console.error(
+      "商品データ保存エラー:",
+      error
+    );
+
+    showMessage(
+      "❌ 保存に失敗しました："
+      + error.message
+    );
+
+  }
 
 }
 
