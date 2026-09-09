@@ -161,7 +161,10 @@ async function initDatabase() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-
+  await pool.query(`
+    ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT false
+  `);
   // ==============================
   // orders テーブル
   // ==============================
