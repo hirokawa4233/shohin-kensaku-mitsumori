@@ -142,7 +142,25 @@ async function initDatabase() {
       is_manual BOOLEAN NOT NULL DEFAULT false
     );
   `);
+  // ==============================
+  // products テーブル
+  // 商品マスタの追加・変更・削除を保存
+  // ==============================
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id BIGSERIAL PRIMARY KEY,
+      code TEXT,
+      size TEXT,
+      a TEXT,
+      price NUMERIC,
+      brand TEXT,
+      pattern TEXT,
+      is_deleted BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
   // ==============================
   // orders テーブル
