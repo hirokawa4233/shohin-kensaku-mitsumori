@@ -697,9 +697,17 @@ async function loadProducts(){
 
   try{
 
-    const response = await fetch("/api/products", {
-      cache:"no-store"
-    });
+    const API_BASE_URL =
+      location.hostname === "shohin-kensaku-mitsumori-development.onrender.com"
+        ? "https://shohin-kensaku-mitsumori-development.onrender.com"
+        : "https://shohin-kensaku-mitsumori-api.onrender.com";
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/products`,
+      {
+        cache:"no-store"
+      }
+    );
 
     const data = await response.json();
 
