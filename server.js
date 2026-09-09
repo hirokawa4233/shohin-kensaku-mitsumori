@@ -185,14 +185,16 @@ async function initDatabase() {
 }
 
 
-initDatabase().catch((error) => {
+initDatabase()
+  .then(() => initializeProducts())
+  .catch((error) => {
 
-  console.error(
-    "Database initialization error:",
-    error
-  );
+    console.error(
+      "Database initialization error:",
+      error
+    );
 
-});
+  });
 
 
 // ==============================
@@ -2659,7 +2661,68 @@ app.put(
 
   }
 );
+// ==============================
+// Excel商品をDBへ初回登録
+// ==============================
 
+async function initializeProducts() {
+
+  const result = await pool.query(`
+    SELECT COUNT(*) AS count
+    FROM products
+  `);
+
+  const count =
+    Number(result.rows[0].count);
+
+  if (count > 0) {
+    console.log(
+      `商品DBはすでに登録済みです: ${count} 件`
+    );
+    return;
+  }
+
+  const excelProducts =
+    loadProducts();
+
+  for (const product of excelProducts) {
+
+    await pool.query(
+      `
+        INSERT INTO products (
+          code,
+          size,
+          a,
+          price,
+          brand,
+          pattern
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+      `,
+      [
+        product.code ?? "",
+        product.size ?? "",
+        product.a ?? "",
+        Number(product.price) || 0,
+        product.brand ?? "",
+        product.pattern ?? ""
+      ]
+    );
+
+  }
+
+  console.log(
+    `Excelの商品 ${excelProducts.length} 件をDBへ初回登録しました`
+  );
+
+}
 // ==============================
 // サーバー起動
 // ==============================
