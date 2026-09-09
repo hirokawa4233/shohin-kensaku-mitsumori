@@ -142,7 +142,25 @@ async function initDatabase() {
       is_manual BOOLEAN NOT NULL DEFAULT false
     );
   `);
+  // ==============================
+  // products テーブル
+  // 商品マスタの追加・変更・削除を保存
+  // ==============================
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id BIGSERIAL PRIMARY KEY,
+      code TEXT,
+      size TEXT,
+      a TEXT,
+      price NUMERIC,
+      brand TEXT,
+      pattern TEXT,
+      is_deleted BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
   // ==============================
   // orders テーブル
@@ -167,14 +185,16 @@ async function initDatabase() {
 }
 
 
-initDatabase().catch((error) => {
+initDatabase()
+  .then(() => initializeProducts())
+  .catch((error) => {
 
-  console.error(
-    "Database initialization error:",
-    error
-  );
+    console.error(
+      "Database initialization error:",
+      error
+    );
 
-});
+  });
 
 
 // ==============================
@@ -403,12 +423,50 @@ function loadProducts() {
 
 app.get(
   "/api/products",
-  (req, res) => {
+  async (req, res) => {
 
     try {
 
+      const result =
+        await pool.query(`
+          SELECT
+            id,
+            code,
+            size,
+            a,
+            price,
+            brand,
+            pattern
+          FROM products
+          WHERE is_deleted = false
+          ORDER BY id
+        `);
+
+
+
       const products =
-        loadProducts();
+        result.rows.map((product) => ({
+
+          code:
+            product.code ?? "",
+
+          size:
+            product.size ?? "",
+
+          a:
+            product.a ?? "",
+
+          price:
+            Number(product.price) || 0,
+
+          brand:
+            product.brand ?? "",
+
+          pattern:
+            product.pattern ?? ""
+
+        }));
+
 
 
       res.json({
@@ -423,6 +481,7 @@ app.get(
       });
 
 
+
     } catch (error) {
 
       console.error(
@@ -431,12 +490,14 @@ app.get(
       );
 
 
+
       res.status(500).json({
 
         success: false,
 
         message:
-          error.message
+          error.message ||
+          "商品データの取得に失敗しました"
 
       });
 
@@ -444,99 +505,108 @@ app.get(
 
   }
 );
-
-
 // ==============================
 // 商品データ保存API
 // ==============================
 
 app.post(
   "/api/products",
-  (req, res) => {
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
 
     try {
 
       const products =
-        Array.isArray(
-          req.body.products
-        )
+        Array.isArray(req.body.products)
           ? req.body.products
-          : [];
+          : null;
 
 
-      const workbook =
-        XLSX.readFile(
-          EXCEL_FILE,
-          {
-            cellDates: false,
-            bookVBA: true
-          }
-        );
+
+      if (!products) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "商品データが正しくありません"
+
+        });
+
+      }
 
 
-      if (
-        !workbook.SheetNames.includes(
-          PRODUCT_SHEET
-        )
+
+      await client.query("BEGIN");
+
+
+
+      // ==============================
+      // 現在の商品マスタを一度削除
+      // ==============================
+
+      await client.query(`
+        DELETE FROM products
+      `);
+
+
+
+      // ==============================
+      // 編集後の商品をDBへ登録
+      // ==============================
+
+      for (
+        const product of products
       ) {
 
-        throw new Error(
-          `Excelに「${PRODUCT_SHEET}」シートがありません。`
+        await client.query(
+          `
+            INSERT INTO products (
+              code,
+              size,
+              a,
+              price,
+              brand,
+              pattern,
+              is_deleted,
+              updated_at
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4,
+              $5,
+              $6,
+              false,
+              CURRENT_TIMESTAMP
+            )
+          `,
+          [
+            product.code ?? "",
+            product.size ?? "",
+            product.a ?? "",
+            Number(product.price) || 0,
+            product.brand ?? "",
+            product.pattern ?? ""
+          ]
         );
 
       }
 
 
-      const rows =
-        products.map(
-          (product) => ({
 
-            "品番":
-              product.code ?? "",
+      await client.query("COMMIT");
 
-            "サイズ":
-              product.size ?? "",
-
-            "A表":
-              product.a ?? "",
-
-            "価格":
-              product.price ?? "",
-
-            "ブランド":
-              product.brand ?? "",
-
-            "パターン":
-              product.pattern ?? ""
-
-          })
-        );
-
-
-      const newSheet =
-        XLSX.utils.json_to_sheet(
-          rows
-        );
-
-
-      workbook.Sheets[
-        PRODUCT_SHEET
-      ] =
-        newSheet;
-
-
-      XLSX.writeFile(
-        workbook,
-        EXCEL_FILE,
-        {
-          bookType: "xlsm"
-        }
-      );
 
 
       console.log(
-        "商品データをExcelに保存しました"
+        `商品データをDBに保存しました: ${products.length} 件`
       );
+
 
 
       res.json({
@@ -544,17 +614,26 @@ app.post(
         success: true,
 
         message:
-          "商品データを保存しました"
+          "商品データを保存しました",
+
+        count:
+          products.length
 
       });
 
 
+
     } catch (error) {
+
+      await client.query("ROLLBACK");
+
+
 
       console.error(
         "商品データ保存エラー:",
         error
       );
+
 
 
       res.status(500).json({
@@ -567,12 +646,16 @@ app.post(
 
       });
 
+
+
+    } finally {
+
+      client.release();
+
     }
 
   }
 );
-
-
 // ==============================
 // 見積依頼受付API
 // ==============================
@@ -2641,7 +2724,68 @@ app.put(
 
   }
 );
+// ==============================
+// Excel商品をDBへ初回登録
+// ==============================
 
+async function initializeProducts() {
+
+  const result = await pool.query(`
+    SELECT COUNT(*) AS count
+    FROM products
+  `);
+
+  const count =
+    Number(result.rows[0].count);
+
+  if (count > 0) {
+    console.log(
+      `商品DBはすでに登録済みです: ${count} 件`
+    );
+    return;
+  }
+
+  const excelProducts =
+    loadProducts();
+
+  for (const product of excelProducts) {
+
+    await pool.query(
+      `
+        INSERT INTO products (
+          code,
+          size,
+          a,
+          price,
+          brand,
+          pattern
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+      `,
+      [
+        product.code ?? "",
+        product.size ?? "",
+        product.a ?? "",
+        Number(product.price) || 0,
+        product.brand ?? "",
+        product.pattern ?? ""
+      ]
+    );
+
+  }
+
+  console.log(
+    `Excelの商品 ${excelProducts.length} 件をDBへ初回登録しました`
+  );
+
+}
 // ==============================
 // サーバー起動
 // ==============================
