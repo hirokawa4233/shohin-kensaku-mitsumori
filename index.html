@@ -213,7 +213,9 @@ textarea{
   background:white;
 }
 
+
 /* 商品カード上段 */
+
 .product-main{
   display:grid;
   grid-template-columns:150px 1.1fr 1.2fr 1fr;
@@ -221,7 +223,9 @@ textarea{
   align-items:center;
 }
 
+
 /* 商品画像 */
+
 .product-image{
   width:150px;
   height:120px;
@@ -240,19 +244,25 @@ textarea{
   object-fit:contain;
 }
 
+
 /* 画像がない場合 */
+
 .no-image{
   color:#9aa9bd;
   font-size:13px;
 }
 
+
 /* 品番 */
+
 .code{
   font-size:14px;
   color:#163e76;
 }
 
+
 /* サイズ */
+
 .size{
   font-size:18px;
   font-weight:800;
@@ -260,21 +270,27 @@ textarea{
   color:#142f55;
 }
 
+
 /* 項目ラベル */
+
 .label{
   color:#7893bb;
   font-size:13px;
   margin-right:7px;
 }
 
+
 /* ブランド */
+
 .brand-name{
   font-size:16px;
   font-weight:700;
   color:#163e76;
 }
 
+
 /* パターン */
+
 .pattern-name{
   font-size:16px;
   font-weight:700;
@@ -307,7 +323,9 @@ textarea{
   font-weight:600;
 }
 
+
 /* 参考価格 */
+
 .reference-price{
   display:flex;
   align-items:center;
@@ -319,7 +337,9 @@ textarea{
   color:#142f55;
 }
 
+
 /* 通常価格 */
+
 .price{
   display:flex;
   align-items:center;
@@ -331,7 +351,9 @@ textarea{
   color:#142f55;
 }
 
+
 /* 数量 */
+
 .qty{
   display:flex;
   align-items:center;
@@ -347,7 +369,9 @@ textarea{
   text-align:center;
 }
 
+
 /* 見積追加 */
+
 .add{
   border:1px solid #e99a6d;
   background:var(--orange);
@@ -826,10 +850,10 @@ let quotes = [];
 
 
 // ==============================
-// ブランド画像
+// パターン画像
 // ==============================
 
-let brandImages = {};
+let patternImages = {};
 
 
 // ==============================
@@ -1016,6 +1040,7 @@ async function loadPatternImages(){
 
 }
 
+
 // ==============================
 // 商品データ読み込み
 // ==============================
@@ -1024,7 +1049,8 @@ async function loadProducts(){
 
   try{
 
-    await loadBrandImages();
+    // パターン画像を読み込む
+    await loadPatternImages();
 
 
     const response =
@@ -1200,14 +1226,24 @@ function doSearch(){
   $("list").innerHTML =
     hit.map(function(p,index){
 
-      const brand =
+      const pattern =
         String(
-          p.brand ?? ""
+          p.pattern ?? ""
         ).trim();
 
 
-      const brandImage =
-        brandImages[brand] || "";
+      /*
+       * パターン名をキーにして画像を取得
+       *
+       * 例：
+       * POTENZA S007A
+       * POTENZA Adrenalin RE005
+       *
+       * それぞれ別の画像が表示される
+       */
+
+      const patternImage =
+        patternImages[pattern] || "";
 
 
       return `
@@ -1220,18 +1256,18 @@ function doSearch(){
           <div class="product-main">
 
 
-            <!-- 商品画像 -->
+            <!-- パターン画像 -->
 
             <div class="product-image">
 
               ${
-                brandImage
+                patternImage
 
                 ? `
 
                   <img
-                    src="${esc(brandImage)}"
-                    alt="${esc(brand)}"
+                    src="${esc(patternImage)}"
+                    alt="${esc(pattern)}"
                   >
 
                 `
@@ -1304,7 +1340,7 @@ function doSearch(){
             <div class="price-area">
 
 
-              <!-- ★ A表から参考価格に変更 -->
+              <!-- 参考価格 -->
 
               <div class="reference-price">
 
