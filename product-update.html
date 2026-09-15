@@ -106,23 +106,23 @@ td input[type="number"] {
 }
 
 /* ==============================
-   ブランド画像
+   パターン画像
    ============================== */
 
-.brand-image-cell {
+.pattern-image-cell {
   width: 150px;
   text-align: center;
   white-space: normal;
 }
 
-.brand-image-box {
+.pattern-image-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
 }
 
-.brand-image-preview {
+.pattern-image-preview {
   width: 90px;
   height: 70px;
   object-fit: contain;
@@ -132,7 +132,7 @@ td input[type="number"] {
   display: block;
 }
 
-.brand-image-empty {
+.pattern-image-empty {
   width: 90px;
   height: 70px;
   display: flex;
@@ -186,6 +186,7 @@ td input[type="number"] {
 
 <div class="description">
   価格表.xlsm の Sheet2 に登録されている商品を確認・編集します。
+  商品写真は「パターン」ごとに登録できます。
 </div>
 
 
@@ -219,7 +220,7 @@ td input[type="number"] {
   id="message"
   class="message"
 >
-  商品データを読み込んでいます…… 
+  商品データを読み込んでいます……
 </div>
 
 
@@ -236,7 +237,7 @@ td input[type="number"] {
 <th>A表</th>
 <th>価格</th>
 <th>ブランド</th>
-<th>ブランド写真</th>
+<th>パターン写真</th>
 <th>パターン</th>
 <th>操作</th>
 
@@ -259,21 +260,23 @@ let products = [];
 
 
 /*
-  ブランド画像
+  パターン画像
 
-  brandImages:
+  patternImages:
   {
-    "REGNO": "data:image/jpeg;base64,...",
-    "POTENZA": "data:image/jpeg;base64,..."
+    "POTENZA S007A": "data:image/jpeg;base64,...",
+    "POTENZA Adrenalin RE005": "data:image/jpeg;base64,..."
   }
 */
-let brandImages = {};
+
+let patternImages = {};
 
 
 /*
-  今回の操作で変更されたブランド画像
+  今回の操作で変更されたパターン画像
 */
-let changedBrandImages = new Set();
+
+let changedPatternImages = new Set();
 
 
 // ==============================
@@ -290,45 +293,51 @@ function showMessage(text) {
 
 
 // ==============================
-// ブランド画像読み込み
+// パターン画像読み込み
 // ==============================
 
-async function loadBrandImages() {
+async function loadPatternImages() {
 
   try {
 
     const response =
       await fetch(
-        "/api/brand-images"
+        "/api/pattern-images",
+        {
+          cache: "no-store"
+        }
       );
 
     const data =
       await response.json();
 
-    if (!response.ok || !data.success) {
+    if (
+      !response.ok ||
+      !data.success
+    ) {
 
       throw new Error(
         data.message ||
-        "ブランド画像の取得に失敗しました"
+        "パターン画像の取得に失敗しました"
       );
 
     }
 
-    brandImages = {};
+    patternImages = {};
 
     const rows =
       Array.isArray(
-        data.brandImages
+        data.patternImages
       )
-        ? data.brandImages
+        ? data.patternImages
         : [];
 
 
     rows.forEach((item) => {
 
-      const brand =
+      const pattern =
         String(
-          item.brand ?? ""
+          item.pattern ?? ""
         ).trim();
 
       const imageData =
@@ -338,11 +347,11 @@ async function loadBrandImages() {
 
 
       if (
-        brand &&
+        pattern &&
         imageData
       ) {
 
-        brandImages[brand] =
+        patternImages[pattern] =
           imageData;
 
       }
@@ -350,10 +359,17 @@ async function loadBrandImages() {
     });
 
 
+    console.log(
+      "パターン画像を読み込みました:",
+      Object.keys(patternImages).length,
+      "件"
+    );
+
+
   } catch (error) {
 
     console.error(
-      "ブランド画像読み込みエラー:",
+      "パターン画像読み込みエラー:",
       error
     );
 
@@ -387,16 +403,19 @@ async function loadProducts() {
   try {
 
     /*
-      商品データとブランド画像を
-      同時に読み込む
+      商品データとパターン画像を
+      読み込む
     */
 
-    await loadBrandImages();
+    await loadPatternImages();
 
 
     const response =
       await fetch(
-        "/api/products"
+        "/api/products",
+        {
+          cache: "no-store"
+        }
       );
 
 
@@ -404,7 +423,10 @@ async function loadProducts() {
       await response.json();
 
 
-    if (!data.success) {
+    if (
+      !response.ok ||
+      !data.success
+    ) {
 
       throw new Error(
         data.message ||
@@ -422,7 +444,7 @@ async function loadProducts() {
         : [];
 
 
-    changedBrandImages.clear();
+    changedPatternImages.clear();
 
 
     renderProducts();
@@ -502,14 +524,19 @@ function renderProducts() {
         );
 
 
-      const brand =
+      const pattern =
         String(
-          product.brand ?? ""
+          product.pattern ?? ""
         ).trim();
 
 
+      /*
+        ブランドではなく
+        パターンをキーにして画像を取得
+      */
+
       const imageData =
-        brandImages[brand] || "";
+        patternImages[pattern] || "";
 
 
       let imageHtml = "";
@@ -519,16 +546,16 @@ function renderProducts() {
 
         imageHtml = `
           <img
-            class="brand-image-preview"
+            class="pattern-image-preview"
             src="${escapeHtml(imageData)}"
-            alt="${escapeHtml(brand)}"
+            alt="${escapeHtml(pattern)}"
           >
         `;
 
       } else {
 
         imageHtml = `
-          <div class="brand-image-empty">
+          <div class="pattern-image-empty">
             写真なし
           </div>
         `;
@@ -583,16 +610,16 @@ function renderProducts() {
         </td>
 
 
-        <td class="brand-image-cell">
+        <td class="pattern-image-cell">
 
-          <div class="brand-image-box">
+          <div class="pattern-image-box">
 
             ${imageHtml}
 
             <button
               type="button"
               class="image-select-button"
-              onclick="selectBrandImage(${index})"
+              onclick="selectPatternImage(${index})"
             >
               写真を選択
             </button>
@@ -601,8 +628,8 @@ function renderProducts() {
               type="file"
               accept="image/*"
               class="image-file-input"
-              id="brandImage_${index}"
-              onchange="handleBrandImage(${index}, this.files[0])"
+              id="patternImage_${index}"
+              onchange="handlePatternImage(${index}, this.files[0])"
             >
 
           </div>
@@ -656,12 +683,12 @@ function updateProduct(
 
 
   /*
-    ブランド名を変更した場合、
-    表示を更新する
+    パターン名を変更した場合、
+    画像表示を更新
   */
 
   if (
-    key === "brand"
+    key === "pattern"
   ) {
 
     renderProducts();
@@ -675,11 +702,11 @@ function updateProduct(
 // 写真選択
 // ==============================
 
-function selectBrandImage(index) {
+function selectPatternImage(index) {
 
   const input =
     document.getElementById(
-      `brandImage_${index}`
+      `patternImage_${index}`
     );
 
 
@@ -693,10 +720,10 @@ function selectBrandImage(index) {
 
 
 // ==============================
-// ブランド写真選択後
+// パターン写真選択後
 // ==============================
 
-function handleBrandImage(
+function handlePatternImage(
   index,
   file
 ) {
@@ -708,16 +735,16 @@ function handleBrandImage(
   }
 
 
-  const brand =
+  const pattern =
     String(
-      products[index]?.brand ?? ""
+      products[index]?.pattern ?? ""
     ).trim();
 
 
-  if (!brand) {
+  if (!pattern) {
 
     alert(
-      "先にブランド名を入力してください。"
+      "先にパターン名を入力してください。"
     );
 
     return;
@@ -771,12 +798,17 @@ function handleBrandImage(
     )
       .then((compressedImage) => {
 
-        brandImages[brand] =
+        /*
+          ブランドではなく
+          パターン名で保存
+        */
+
+        patternImages[pattern] =
           compressedImage;
 
 
-        changedBrandImages.add(
-          brand
+        changedPatternImages.add(
+          pattern
         );
 
 
@@ -784,7 +816,7 @@ function handleBrandImage(
 
 
         showMessage(
-          `「${brand}」の写真を変更しました。商品データを保存してください。`
+          `「${pattern}」の写真を変更しました。商品データを保存してください。`
         );
 
       })
@@ -1008,25 +1040,25 @@ function deleteProduct(index) {
 
 
 // ==============================
-// ブランド写真保存
+// パターン写真保存
 // ==============================
 
-async function saveBrandImages() {
+async function savePatternImages() {
 
   /*
-    今回変更したブランドだけ保存する
+    今回変更したパターンだけ保存する
   */
 
   for (
-    const brand of changedBrandImages
+    const pattern of changedPatternImages
   ) {
 
     const imageData =
-      brandImages[brand];
+      patternImages[pattern];
 
 
     if (
-      !brand ||
+      !pattern ||
       !imageData
     ) {
 
@@ -1037,7 +1069,7 @@ async function saveBrandImages() {
 
     const response =
       await fetch(
-        "/api/brand-images",
+        "/api/pattern-images",
         {
           method: "POST",
 
@@ -1049,7 +1081,7 @@ async function saveBrandImages() {
           body:
             JSON.stringify({
 
-              brand,
+              pattern,
 
               imageData
 
@@ -1070,7 +1102,7 @@ async function saveBrandImages() {
 
       throw new Error(
         data.message ||
-        `ブランド「${brand}」の写真保存に失敗しました`
+        `パターン「${pattern}」の写真保存に失敗しました`
       );
 
     }
@@ -1088,7 +1120,7 @@ async function saveProducts() {
 
   if (
     !confirm(
-      "現在の商品データとブランド写真を保存しますか？"
+      "現在の商品データとパターン写真を保存しますか？"
     )
   ) {
 
@@ -1146,26 +1178,26 @@ async function saveProducts() {
 
 
     /*
-      次にブランド写真を保存
+      次にパターン写真を保存
     */
 
     showMessage(
-      "ブランド写真を保存しています……"
+      "パターン写真を保存しています……"
     );
 
 
-    await saveBrandImages();
+    await savePatternImages();
 
 
     /*
       保存完了
     */
 
-    changedBrandImages.clear();
+    changedPatternImages.clear();
 
 
     showMessage(
-      "✅ 商品データとブランド写真を保存しました！"
+      "✅ 商品データとパターン写真を保存しました！"
     );
 
 
