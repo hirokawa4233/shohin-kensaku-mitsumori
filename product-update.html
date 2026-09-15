@@ -78,7 +78,7 @@ button {
 table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 1000px;
+  min-width: 1150px;
 }
 
 th,
@@ -93,14 +93,67 @@ th {
   background: #eef1f3;
   position: sticky;
   top: 0;
+  z-index: 2;
 }
 
-td input {
+td input[type="text"],
+td input[type="number"] {
   width: 100%;
   box-sizing: border-box;
   padding: 7px;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+/* ==============================
+   ブランド画像
+   ============================== */
+
+.brand-image-cell {
+  width: 150px;
+  text-align: center;
+  white-space: normal;
+}
+
+.brand-image-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-image-preview {
+  width: 90px;
+  height: 70px;
+  object-fit: contain;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+  display: block;
+}
+
+.brand-image-empty {
+  width: 90px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #bbb;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #999;
+  font-size: 12px;
+}
+
+.image-select-button {
+  background: #607d8b;
+  color: white;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.image-file-input {
+  display: none;
 }
 
 .actions {
@@ -166,7 +219,7 @@ td input {
   id="message"
   class="message"
 >
-  商品データを読み込んでいます……
+  商品データを読み込んでいます…… 
 </div>
 
 
@@ -183,6 +236,7 @@ td input {
 <th>A表</th>
 <th>価格</th>
 <th>ブランド</th>
+<th>ブランド写真</th>
 <th>パターン</th>
 <th>操作</th>
 
@@ -204,6 +258,24 @@ td input {
 let products = [];
 
 
+/*
+  ブランド画像
+
+  brandImages:
+  {
+    "REGNO": "data:image/jpeg;base64,...",
+    "POTENZA": "data:image/jpeg;base64,..."
+  }
+*/
+let brandImages = {};
+
+
+/*
+  今回の操作で変更されたブランド画像
+*/
+let changedBrandImages = new Set();
+
+
 // ==============================
 // メッセージ
 // ==============================
@@ -213,6 +285,79 @@ function showMessage(text) {
   document.getElementById(
     "message"
   ).textContent = text;
+
+}
+
+
+// ==============================
+// ブランド画像読み込み
+// ==============================
+
+async function loadBrandImages() {
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/brand-images"
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok || !data.success) {
+
+      throw new Error(
+        data.message ||
+        "ブランド画像の取得に失敗しました"
+      );
+
+    }
+
+    brandImages = {};
+
+    const rows =
+      Array.isArray(
+        data.brandImages
+      )
+        ? data.brandImages
+        : [];
+
+
+    rows.forEach((item) => {
+
+      const brand =
+        String(
+          item.brand ?? ""
+        ).trim();
+
+      const imageData =
+        String(
+          item.imageData ?? ""
+        ).trim();
+
+
+      if (
+        brand &&
+        imageData
+      ) {
+
+        brandImages[brand] =
+          imageData;
+
+      }
+
+    });
+
+
+  } catch (error) {
+
+    console.error(
+      "ブランド画像読み込みエラー:",
+      error
+    );
+
+  }
 
 }
 
@@ -231,22 +376,33 @@ async function loadProducts() {
   table.innerHTML =
     `<tr>
       <td
-        colspan="7"
+        colspan="8"
         class="loading"
       >
         読み込み中……
       </td>
     </tr>`;
 
+
   try {
+
+    /*
+      商品データとブランド画像を
+      同時に読み込む
+    */
+
+    await loadBrandImages();
+
 
     const response =
       await fetch(
         "/api/products"
       );
 
+
     const data =
       await response.json();
+
 
     if (!data.success) {
 
@@ -257,6 +413,7 @@ async function loadProducts() {
 
     }
 
+
     products =
       Array.isArray(
         data.products
@@ -264,25 +421,33 @@ async function loadProducts() {
         ? data.products
         : [];
 
+
+    changedBrandImages.clear();
+
+
     renderProducts();
+
 
     showMessage(
       `${products.length} 件の商品を読み込みました。`
     );
 
+
   } catch (error) {
 
     console.error(error);
 
+
     table.innerHTML =
       `<tr>
         <td
-          colspan="7"
+          colspan="8"
           class="empty"
         >
           商品データを読み込めませんでした。
         </td>
       </tr>`;
+
 
     showMessage(
       "エラー：" +
@@ -305,7 +470,9 @@ function renderProducts() {
       "productTable"
     );
 
+
   table.innerHTML = "";
+
 
   if (
     products.length === 0
@@ -314,7 +481,7 @@ function renderProducts() {
     table.innerHTML =
       `<tr>
         <td
-          colspan="7"
+          colspan="8"
           class="empty"
         >
           商品データがありません。
@@ -335,6 +502,40 @@ function renderProducts() {
         );
 
 
+      const brand =
+        String(
+          product.brand ?? ""
+        ).trim();
+
+
+      const imageData =
+        brandImages[brand] || "";
+
+
+      let imageHtml = "";
+
+
+      if (imageData) {
+
+        imageHtml = `
+          <img
+            class="brand-image-preview"
+            src="${escapeHtml(imageData)}"
+            alt="${escapeHtml(brand)}"
+          >
+        `;
+
+      } else {
+
+        imageHtml = `
+          <div class="brand-image-empty">
+            写真なし
+          </div>
+        `;
+
+      }
+
+
       row.innerHTML = `
 
         <td>
@@ -345,6 +546,7 @@ function renderProducts() {
           >
         </td>
 
+
         <td>
           <input
             type="text"
@@ -352,6 +554,7 @@ function renderProducts() {
             onchange="updateProduct(${index}, 'size', this.value)"
           >
         </td>
+
 
         <td>
           <input
@@ -361,6 +564,7 @@ function renderProducts() {
           >
         </td>
 
+
         <td>
           <input
             type="number"
@@ -368,6 +572,7 @@ function renderProducts() {
             onchange="updateProduct(${index}, 'price', this.value)"
           >
         </td>
+
 
         <td>
           <input
@@ -377,6 +582,34 @@ function renderProducts() {
           >
         </td>
 
+
+        <td class="brand-image-cell">
+
+          <div class="brand-image-box">
+
+            ${imageHtml}
+
+            <button
+              type="button"
+              class="image-select-button"
+              onclick="selectBrandImage(${index})"
+            >
+              写真を選択
+            </button>
+
+            <input
+              type="file"
+              accept="image/*"
+              class="image-file-input"
+              id="brandImage_${index}"
+              onchange="handleBrandImage(${index}, this.files[0])"
+            >
+
+          </div>
+
+        </td>
+
+
         <td>
           <input
             type="text"
@@ -384,6 +617,7 @@ function renderProducts() {
             onchange="updateProduct(${index}, 'pattern', this.value)"
           >
         </td>
+
 
         <td class="actions">
 
@@ -397,6 +631,7 @@ function renderProducts() {
         </td>
 
       `;
+
 
       table.appendChild(row);
 
@@ -418,6 +653,281 @@ function updateProduct(
 
   products[index][key] =
     value;
+
+
+  /*
+    ブランド名を変更した場合、
+    表示を更新する
+  */
+
+  if (
+    key === "brand"
+  ) {
+
+    renderProducts();
+
+  }
+
+}
+
+
+// ==============================
+// 写真選択
+// ==============================
+
+function selectBrandImage(index) {
+
+  const input =
+    document.getElementById(
+      `brandImage_${index}`
+    );
+
+
+  if (input) {
+
+    input.click();
+
+  }
+
+}
+
+
+// ==============================
+// ブランド写真選択後
+// ==============================
+
+function handleBrandImage(
+  index,
+  file
+) {
+
+  if (!file) {
+
+    return;
+
+  }
+
+
+  const brand =
+    String(
+      products[index]?.brand ?? ""
+    ).trim();
+
+
+  if (!brand) {
+
+    alert(
+      "先にブランド名を入力してください。"
+    );
+
+    return;
+
+  }
+
+
+  if (
+    !file.type.startsWith("image/")
+  ) {
+
+    alert(
+      "画像ファイルを選択してください。"
+    );
+
+    return;
+
+  }
+
+
+  const reader =
+    new FileReader();
+
+
+  reader.onload = function(event) {
+
+    const imageData =
+      event.target.result;
+
+
+    if (!imageData) {
+
+      alert(
+        "画像の読み込みに失敗しました。"
+      );
+
+      return;
+
+    }
+
+
+    /*
+      大きな画像をそのままDBへ送らず、
+      ブラウザ側で縮小・圧縮する
+    */
+
+    resizeImage(
+      imageData,
+      800,
+      0.8
+    )
+      .then((compressedImage) => {
+
+        brandImages[brand] =
+          compressedImage;
+
+
+        changedBrandImages.add(
+          brand
+        );
+
+
+        renderProducts();
+
+
+        showMessage(
+          `「${brand}」の写真を変更しました。商品データを保存してください。`
+        );
+
+      })
+      .catch((error) => {
+
+        console.error(error);
+
+        alert(
+          "画像の処理に失敗しました。"
+        );
+
+      });
+
+  };
+
+
+  reader.onerror = function() {
+
+    alert(
+      "画像の読み込みに失敗しました。"
+    );
+
+  };
+
+
+  reader.readAsDataURL(file);
+
+}
+
+
+// ==============================
+// 画像縮小・圧縮
+// ==============================
+
+function resizeImage(
+  imageData,
+  maxSize,
+  quality
+) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const image =
+        new Image();
+
+
+      image.onload = function() {
+
+        let width =
+          image.width;
+
+        let height =
+          image.height;
+
+
+        /*
+          長辺を maxSize px にする
+        */
+
+        if (
+          width > maxSize ||
+          height > maxSize
+        ) {
+
+          if (
+            width >= height
+          ) {
+
+            height =
+              Math.round(
+                height *
+                (maxSize / width)
+              );
+
+            width =
+              maxSize;
+
+          } else {
+
+            width =
+              Math.round(
+                width *
+                (maxSize / height)
+              );
+
+            height =
+              maxSize;
+
+          }
+
+        }
+
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+
+        canvas.width =
+          width;
+
+        canvas.height =
+          height;
+
+
+        const context =
+          canvas.getContext(
+            "2d"
+          );
+
+
+        context.drawImage(
+          image,
+          0,
+          0,
+          width,
+          height
+        );
+
+
+        const result =
+          canvas.toDataURL(
+            "image/jpeg",
+            quality
+          );
+
+
+        resolve(result);
+
+      };
+
+
+      image.onerror =
+        reject;
+
+
+      image.src =
+        imageData;
+
+    }
+  );
 
 }
 
@@ -444,7 +954,9 @@ function addProduct() {
 
   });
 
+
   renderProducts();
+
 
   showMessage(
     "新しい商品を追加しました。内容を入力してください。"
@@ -462,8 +974,11 @@ function deleteProduct(index) {
   const product =
     products[index];
 
+
   const code =
-    product.code || "この商品";
+    product.code ||
+    "この商品";
+
 
   if (
     !confirm(
@@ -475,39 +990,123 @@ function deleteProduct(index) {
 
   }
 
+
   products.splice(
     index,
     1
   );
 
+
   renderProducts();
 
+
   showMessage(
-    "商品を削除しました。保存するまでExcelには反映されません。"
+    "商品を削除しました。保存するまでDBには反映されません。"
   );
 
 }
 
 
 // ==============================
-// 保存
+// ブランド写真保存
+// ==============================
+
+async function saveBrandImages() {
+
+  /*
+    今回変更したブランドだけ保存する
+  */
+
+  for (
+    const brand of changedBrandImages
+  ) {
+
+    const imageData =
+      brandImages[brand];
+
+
+    if (
+      !brand ||
+      !imageData
+    ) {
+
+      continue;
+
+    }
+
+
+    const response =
+      await fetch(
+        "/api/brand-images",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+
+              brand,
+
+              imageData
+
+            })
+
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+
+      throw new Error(
+        data.message ||
+        `ブランド「${brand}」の写真保存に失敗しました`
+      );
+
+    }
+
+  }
+
+}
+
+
+// ==============================
+// 商品データ保存
 // ==============================
 
 async function saveProducts() {
 
   if (
     !confirm(
-      "現在の商品データを保存しますか？"
+      "現在の商品データとブランド写真を保存しますか？"
     )
   ) {
+
     return;
+
   }
+
 
   try {
 
     showMessage(
       "商品データを保存しています……"
     );
+
+
+    /*
+      まず商品データを保存
+    */
 
     const response =
       await fetch(
@@ -524,6 +1123,7 @@ async function saveProducts() {
             JSON.stringify({
               products
             })
+
         }
       );
 
@@ -545,9 +1145,29 @@ async function saveProducts() {
     }
 
 
+    /*
+      次にブランド写真を保存
+    */
+
     showMessage(
-      "✅ 商品データを保存しました！"
+      "ブランド写真を保存しています……"
     );
+
+
+    await saveBrandImages();
+
+
+    /*
+      保存完了
+    */
+
+    changedBrandImages.clear();
+
+
+    showMessage(
+      "✅ 商品データとブランド写真を保存しました！"
+    );
+
 
   } catch (error) {
 
@@ -556,9 +1176,10 @@ async function saveProducts() {
       error
     );
 
+
     showMessage(
-      "❌ 保存に失敗しました："
-      + error.message
+      "❌ 保存に失敗しました：" +
+      error.message
     );
 
   }
@@ -575,22 +1196,27 @@ function escapeHtml(
 ) {
 
   return String(value)
+
     .replace(
       /&/g,
       "&amp;"
     )
+
     .replace(
       /</g,
       "&lt;"
     )
+
     .replace(
       />/g,
       "&gt;"
     )
+
     .replace(
       /"/g,
       "&quot;"
     )
+
     .replace(
       /'/g,
       "&#039;"
