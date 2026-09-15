@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>商品検索・見積依頼</title>
+
 <style>
 
 :root{
@@ -17,15 +18,16 @@
   --bg:#fff;
 }
 
-.notice {
-  font-size: 15px;
-  font-weight: bold;
-  color: #d32f2f;
-  background: #fff3e0;
-  padding: 8px 12px;
-  border-radius: 6px;
-  display: inline-block;
+.notice{
+  font-size:15px;
+  font-weight:bold;
+  color:#d32f2f;
+  background:#fff3e0;
+  padding:8px 12px;
+  border-radius:6px;
+  display:inline-block;
 }
+
 *{
   box-sizing:border-box;
 }
@@ -48,7 +50,6 @@ input,
 textarea{
   font:inherit;
 }
-
 
 /* ==========================
    ヘッダー
@@ -82,7 +83,6 @@ textarea{
 .quote-btn:hover{
   background:rgba(255,255,255,.1);
 }
-
 
 /* ==========================
    検索エリア
@@ -144,7 +144,6 @@ textarea{
   font-size:15px;
 }
 
-
 /* ==========================
    商品一覧
 ========================== */
@@ -191,8 +190,8 @@ textarea{
   color:#a33;
   padding:20px;
   border-radius:12px;
+  white-space:pre-line;
 }
-
 
 /* ==========================
    商品カード
@@ -296,7 +295,6 @@ textarea{
   padding:50px 20px;
   color:#6c86ad;
 }
-
 
 /* ==========================
    モーダル
@@ -415,7 +413,6 @@ textarea{
   background:#174b91;
 }
 
-
 /* ==========================
    トースト
 ========================== */
@@ -433,7 +430,6 @@ textarea{
   z-index:2000;
   font-weight:700;
 }
-
 
 /* ==========================
    レスポンシブ
@@ -487,7 +483,9 @@ textarea{
   .price-area{
     gap:12px;
   }
+
 }
+
 </style>
 </head>
 
@@ -495,11 +493,15 @@ textarea{
 <body>
 
 <header class="top">
-  <div class="brand">🛒 商品検索</div>
+
+  <div class="brand">
+    🛒 商品検索
+  </div>
 
   <button class="quote-btn" onclick="openQuote()">
     🛒 見積を見る (<span id="qcount">0</span>)
   </button>
+
 </header>
 
 
@@ -507,12 +509,20 @@ textarea{
 
 <section class="search-box">
 
-  <h1>商品を検索してください</h1>
+  <h1>
+    商品を検索してください
+  </h1>
 
-  <p>品番・サイズ・ブランド・パターンなどから検索できます</p>
- <p class="notice">※表示金額は参考価格です。在庫・納期連絡の際にお見積り提示させていただきます。</p>
+  <p>
+    品番・サイズ・ブランド・パターンなどから検索できます
+  </p>
+
+  <p class="notice">
+    ※表示金額は参考価格です。在庫・納期連絡の際にお見積り提示させていただきます。
+  </p>
 
   <div class="search-row">
+
     <input
       id="search"
       type="text"
@@ -523,6 +533,7 @@ textarea{
     <button onclick="doSearch()">
       🔍 検索
     </button>
+
   </div>
 
   <div class="example">
@@ -535,23 +546,48 @@ textarea{
 <section class="container">
 
   <div class="list-header">
-    <h2>商品一覧</h2>
+
+    <h2>
+      商品一覧
+    </h2>
+
     <div id="count"></div>
+
   </div>
 
+
   <div id="hint" class="hint">
-    <div class="icon">🔍</div>
-    <h3>商品を検索してください</h3>
+
+    <div class="icon">
+      🔍
+    </div>
+
+    <h3>
+      商品を検索してください
+    </h3>
+
     <div>
       上の検索ボックスにキーワードを入力すると、<br>
       商品一覧が表示されます。
     </div>
+
   </div>
 
-  <div id="error" class="error" style="display:none;"></div>
 
-  <div id="results" style="display:none;">
+  <div
+    id="error"
+    class="error"
+    style="display:none;"
+  ></div>
+
+
+  <div
+    id="results"
+    style="display:none;"
+  >
+
     <div id="list"></div>
+
   </div>
 
 </section>
@@ -568,40 +604,91 @@ textarea{
   <div class="modal-box">
 
     <div class="modal-head">
-      <h2>見積内容</h2>
 
-      <button class="close" onclick="closeQuote()">
+      <h2>
+        見積内容
+      </h2>
+
+      <button
+        class="close"
+        onclick="closeQuote()"
+      >
         ×
       </button>
+
     </div>
+
 
     <div id="quoteList"></div>
 
-    <div id="formArea" class="form-area">
 
-      <h3>見積依頼情報</h3>
+    <div
+      id="formArea"
+      class="form-area"
+    >
+
+      <h3>
+        見積依頼情報
+      </h3>
+
 
       <div class="form-row">
-        <label for="company">会社名</label>
-        <input id="company" type="text">
+
+        <label for="company">
+          会社名
+        </label>
+
+        <input
+          id="company"
+          type="text"
+        >
+
       </div>
 
-      <div class="form-row">
-        <label for="phone">電話番号</label>
-        <input id="phone" type="text">
-      </div>
 
       <div class="form-row">
-        <label for="email">メールアドレス</label>
-        <input id="email" type="email">
+
+        <label for="phone">
+          電話番号
+        </label>
+
+        <input
+          id="phone"
+          type="text"
+        >
+
       </div>
 
+
       <div class="form-row">
-        <label for="note">備考</label>
+
+        <label for="email">
+          メールアドレス
+        </label>
+
+        <input
+          id="email"
+          type="email"
+        >
+
+      </div>
+
+
+      <div class="form-row">
+
+        <label for="note">
+          備考
+        </label>
+
         <textarea id="note"></textarea>
+
       </div>
 
-      <button class="primary" onclick="submitQuote()">
+
+      <button
+        class="primary"
+        onclick="submitQuote()"
+      >
         見積依頼を送信
       </button>
 
@@ -612,7 +699,10 @@ textarea{
 </div>
 
 
-<div id="toast" class="toast"></div>
+<div
+  id="toast"
+  class="toast"
+></div>
 
 
 <script>
@@ -627,11 +717,40 @@ let quotes = [];
 
 
 // ==============================
+// ブランド画像
+// ==============================
+
+let brandImages = {};
+
+
+// ==============================
+// API URL
+// ==============================
+
+function getApiBaseUrl(){
+
+  if(
+    location.hostname ===
+    "shohin-kensaku-mitsumori-development.onrender.com"
+  ){
+
+    return "https://shohin-kensaku-mitsumori-development.onrender.com";
+
+  }
+
+  return "https://shohin-kensaku-mitsumori-api.onrender.com";
+
+}
+
+
+// ==============================
 // 共通関数
 // ==============================
 
 function $(id){
+
   return document.getElementById(id);
+
 }
 
 
@@ -640,7 +759,7 @@ function norm(value){
   return String(value ?? "")
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/\s+/g, "");
+    .replace(/\s+/g,"");
 
 }
 
@@ -649,7 +768,7 @@ function digits(value){
 
   return String(value ?? "")
     .normalize("NFKC")
-    .replace(/\D/g, "");
+    .replace(/\D/g,"");
 
 }
 
@@ -661,39 +780,152 @@ function fmt(value){
     value === undefined ||
     value === ""
   ){
+
     return "";
+
   }
 
+
   if(typeof value === "number"){
+
     return value.toLocaleString("ja-JP");
+
   }
+
 
   const text = String(value);
 
-  const num = Number(text.replace(/,/g,""));
+  const num =
+    Number(
+      text.replace(/,/g,"")
+    );
 
-  if(!Number.isNaN(num) && text.trim() !== ""){
+
+  if(
+    !Number.isNaN(num) &&
+    text.trim() !== ""
+  ){
+
     return num.toLocaleString("ja-JP");
+
   }
 
+
   return text;
+
 }
 
 
 function esc(value){
 
   return String(value ?? "")
-    .replace(/[&<>"']/g, function(m){
+    .replace(
+      /[&<>"']/g,
+      function(m){
 
-      return {
-        "&":"&amp;",
-        "<":"&lt;",
-        ">":"&gt;",
-        '"':"&quot;",
-        "'":"&#39;"
-      }[m];
+        return {
+          "&":"&amp;",
+          "<":"&lt;",
+          ">":"&gt;",
+          '"':"&quot;",
+          "'":"&#39;"
+        }[m];
+
+      }
+    );
+
+}
+
+
+// ==============================
+// ブランド画像読み込み
+// ==============================
+
+async function loadBrandImages(){
+
+  try{
+
+    const API_BASE_URL =
+      getApiBaseUrl();
+
+
+    const response =
+      await fetch(
+        `${API_BASE_URL}/api/brand-images`,
+        {
+          cache:"no-store"
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if(
+      !response.ok ||
+      !data.success
+    ){
+
+      throw new Error(
+        data.message ||
+        "ブランド画像の取得に失敗しました"
+      );
+
+    }
+
+
+    brandImages = {};
+
+
+    const rows =
+      Array.isArray(data.brandImages)
+        ? data.brandImages
+        : [];
+
+
+    rows.forEach(function(item){
+
+      const brand =
+        String(
+          item.brand ?? ""
+        ).trim();
+
+
+      const imageData =
+        String(
+          item.imageData ?? ""
+        ).trim();
+
+
+      if(
+        brand &&
+        imageData
+      ){
+
+        brandImages[brand] =
+          imageData;
+
+      }
 
     });
+
+
+    console.log(
+      "ブランド画像を読み込みました:",
+      Object.keys(brandImages).length,
+      "件"
+    );
+
+
+  }catch(error){
+
+    console.error(
+      "ブランド画像読み込みエラー:",
+      error
+    );
+
+  }
 
 }
 
@@ -706,31 +938,44 @@ async function loadProducts(){
 
   try{
 
+    await loadBrandImages();
+
+
     const API_BASE_URL =
-      location.hostname === "shohin-kensaku-mitsumori-development.onrender.com"
-        ? "https://shohin-kensaku-mitsumori-development.onrender.com"
-        : "https://shohin-kensaku-mitsumori-api.onrender.com";
+      getApiBaseUrl();
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/products`,
-      {
-        cache:"no-store"
-      }
-    );
 
-    const data = await response.json();
+    const response =
+      await fetch(
+        `${API_BASE_URL}/api/products`,
+        {
+          cache:"no-store"
+        }
+      );
 
-    if(!response.ok || !data.success){
+
+    const data =
+      await response.json();
+
+
+    if(
+      !response.ok ||
+      !data.success
+    ){
 
       throw new Error(
-        data.message || "商品データの取得に失敗しました"
+        data.message ||
+        "商品データの取得に失敗しました"
       );
 
     }
 
-    products = Array.isArray(data.products)
-      ? data.products
-      : [];
+
+    products =
+      Array.isArray(data.products)
+        ? data.products
+        : [];
+
 
     console.log(
       "Excelから商品データを読み込みました:",
@@ -738,16 +983,19 @@ async function loadProducts(){
       "件"
     );
 
+
   }catch(error){
 
     console.error(error);
 
-    $("error").style.display = "block";
+
+    $("error").style.display =
+      "block";
+
 
     $("error").textContent =
-      "商品データを読み込めませんでした。"
-      + "\n"
-      + error.message;
+      "商品データを読み込めませんでした。\n" +
+      error.message;
 
   }
 
@@ -760,64 +1008,89 @@ async function loadProducts(){
 
 function doSearch(){
 
-  const q = $("search").value.trim();
+  const q =
+    $("search").value.trim();
+
 
   if(!q){
 
-    $("hint").style.display = "block";
-    $("results").style.display = "none";
-    $("count").textContent = "";
+    $("hint").style.display =
+      "block";
+
+    $("results").style.display =
+      "none";
+
+    $("count").textContent =
+      "";
 
     return;
 
   }
 
 
-  const nq = norm(q);
-  const nd = digits(q);
+  const nq =
+    norm(q);
 
 
-  const hit = products
-    .filter(function(p){
-
-      const values = [
-        p.code,
-        p.size,
-        p.a,
-        p.price,
-        p.brand,
-        p.pattern
-      ];
+  const nd =
+    digits(q);
 
 
-      // 通常検索
-      const normalHit = values.some(function(v){
+  const hit =
+    products
+      .filter(function(p){
 
-        return norm(v).includes(nq);
+        const values = [
 
-      });
+          p.code,
+          p.size,
+          p.a,
+          p.price,
+          p.brand,
+          p.pattern
 
-
-      // サイズ等を数字だけで検索
-      const digitHit =
-        nd.length > 0 &&
-        values.some(function(v){
-
-          const d = digits(v);
-
-          return d.length > 0 && d.includes(nd);
-
-        });
+        ];
 
 
-      return normalHit || digitHit;
+        const normalHit =
+          values.some(function(v){
 
-    })
-    .slice(0, 100);
+            return norm(v).includes(nq);
+
+          });
 
 
-  $("hint").style.display = "none";
-  $("results").style.display = "block";
+        const digitHit =
+          nd.length > 0 &&
+          values.some(function(v){
+
+            const d =
+              digits(v);
+
+            return (
+              d.length > 0 &&
+              d.includes(nd)
+            );
+
+          });
+
+
+        return (
+          normalHit ||
+          digitHit
+        );
+
+      })
+      .slice(0,100);
+
+
+  $("hint").style.display =
+    "none";
+
+
+  $("results").style.display =
+    "block";
+
 
   $("count").textContent =
     `${hit.length}件表示`;
@@ -825,107 +1098,172 @@ function doSearch(){
 
   if(!hit.length){
 
-    $("list").innerHTML =
-      `<div class="empty">
+    $("list").innerHTML = `
+
+      <div class="empty">
+
         該当する商品が見つかりませんでした。
-      </div>`;
+
+      </div>
+
+    `;
 
     return;
 
   }
 
 
-  $("list").innerHTML = hit.map(function(p,index){
+  $("list").innerHTML =
+    hit.map(function(p,index){
 
-    return `
-      <article class="card">
-
-        <div class="grid">
-
-          <div>
-            <div class="code">
-              ${esc(p.code)}
-            </div>
-
-            <div class="size">
-              ${esc(p.size)}
-            </div>
-          </div>
+      const brand =
+        String(
+          p.brand ?? ""
+        ).trim();
 
 
-          <div>
-            <span class="label">
-              ブランド
-            </span>
-
-            ${esc(p.brand)}
-          </div>
+      const brandImage =
+        brandImages[brand] || "";
 
 
-          <div>
-            <span class="label">
-              パターン
-            </span>
+      return `
 
-            ${esc(p.pattern)}
-          </div>
+        <article class="card">
 
-        </div>
+          <div class="grid">
 
 
-        <div class="bottom">
+            <div>
 
-          <div class="price-area">
+              <div class="code">
+                ${esc(p.code)}
+              </div>
 
-            <div class="value">
-              A表：${fmt(p.a)}
+              <div class="size">
+                ${esc(p.size)}
+              </div>
+
             </div>
 
 
-            <div class="price">
+            <div>
 
               <span class="label">
-                価格
+                ブランド
               </span>
 
-              <strong>
-                ${fmt(p.price)}
-              </strong>
-
-            </div>
-
-
-            <div class="qty">
-
-              <span>
-                数量
-              </span>
-
-              <input
-                id="qty-${index}"
-                type="number"
-                min="1"
-                value="1"
+              <div
+                style="
+                  margin-top:8px;
+                "
               >
 
+                ${
+                  brandImage
+                    ? `
+
+                      <img
+                        src="${esc(brandImage)}"
+                        alt="${esc(brand)}"
+                        style="
+                          width:90px;
+                          height:70px;
+                          object-fit:contain;
+                          border:1px solid #ddd;
+                          border-radius:8px;
+                          background:#fafafa;
+                          display:block;
+                          margin-bottom:6px;
+                        "
+                      >
+
+                    `
+                    : ""
+                }
+
+
+                <span>
+                  ${esc(p.brand)}
+                </span>
+
+              </div>
+
             </div>
+
+
+            <div>
+
+              <span class="label">
+                パターン
+              </span>
+
+              ${esc(p.pattern)}
+
+            </div>
+
 
           </div>
 
 
-          <button
-            class="add"
-            onclick='addQuote(${JSON.stringify(p)},${index})'
-          >
-            見積に追加
-          </button>
+          <div class="bottom">
 
-        </div>
 
-      </article>
-    `;
+            <div class="price-area">
 
-  }).join("");
+
+              <div class="value">
+                A表：${fmt(p.a)}
+              </div>
+
+
+              <div class="price">
+
+                <span class="label">
+                  価格
+                </span>
+
+                <strong>
+                  ${fmt(p.price)}
+                </strong>
+
+              </div>
+
+
+              <div class="qty">
+
+                <span>
+                  数量
+                </span>
+
+                <input
+                  id="qty-${index}"
+                  type="number"
+                  min="1"
+                  value="1"
+                >
+
+              </div>
+
+
+            </div>
+
+
+            <button
+              class="add"
+              onclick='addQuote(${JSON.stringify(p)},${index})'
+            >
+              見積に追加
+            </button>
+
+
+          </div>
+
+
+        </article>
+
+      `;
+
+    }).join("");
 
 }
 
@@ -936,24 +1274,37 @@ function doSearch(){
 
 function addQuote(p,index){
 
-  const input = $(`qty-${index}`);
-
-  const q = Math.max(
-    1,
-    parseInt(input.value) || 1
-  );
+  const input =
+    $(`qty-${index}`);
 
 
-  const existing = quotes.find(function(x){
-
-    return (
-      String(x.code) === String(p.code) &&
-      String(x.size) === String(p.size) &&
-      String(x.brand) === String(p.brand) &&
-      String(x.pattern) === String(p.pattern)
+  const q =
+    Math.max(
+      1,
+      parseInt(input.value) || 1
     );
 
-  });
+
+  const existing =
+    quotes.find(function(x){
+
+      return (
+
+        String(x.code) ===
+        String(p.code) &&
+
+        String(x.size) ===
+        String(p.size) &&
+
+        String(x.brand) ===
+        String(p.brand) &&
+
+        String(x.pattern) ===
+        String(p.pattern)
+
+      );
+
+    });
 
 
   if(existing){
@@ -963,8 +1314,11 @@ function addQuote(p,index){
   }else{
 
     quotes.push({
+
       ...p,
+
       qty:q
+
     });
 
   }
@@ -974,7 +1328,9 @@ function addQuote(p,index){
     quotes.length;
 
 
-  toast("見積に追加しました");
+  toast(
+    "見積に追加しました"
+  );
 
 }
 
@@ -985,7 +1341,9 @@ function addQuote(p,index){
 
 function openQuote(){
 
-  $("modal").classList.add("open");
+  $("modal").classList.add(
+    "open"
+  );
 
   renderQuote();
 
@@ -994,7 +1352,9 @@ function openQuote(){
 
 function closeQuote(){
 
-  $("modal").classList.remove("open");
+  $("modal").classList.remove(
+    "open"
+  );
 
 }
 
@@ -1004,15 +1364,23 @@ function renderQuote(){
   if(!quotes.length){
 
     $("quoteList").innerHTML = `
+
       <div class="empty">
+
         見積内容はまだありません<br>
+
         <small>
           商品を検索して、見積に追加してください。
         </small>
+
       </div>
+
     `;
 
-    $("formArea").style.display = "none";
+
+    $("formArea").style.display =
+      "none";
+
 
     return;
 
@@ -1023,11 +1391,14 @@ function renderQuote(){
     quotes.map(function(p,index){
 
       const total =
-        (Number(p.price) || 0) * p.qty;
+        (Number(p.price) || 0) *
+        p.qty;
 
 
       return `
+
         <div class="quote-item">
+
 
           <div>
 
@@ -1066,13 +1437,16 @@ function renderQuote(){
 
           </div>
 
+
         </div>
+
       `;
 
     }).join("");
 
 
-  $("formArea").style.display = "block";
+  $("formArea").style.display =
+    "block";
 
 }
 
@@ -1083,10 +1457,15 @@ function renderQuote(){
 
 function removeQuote(index){
 
-  quotes.splice(index,1);
+  quotes.splice(
+    index,
+    1
+  );
+
 
   $("qcount").textContent =
     quotes.length;
+
 
   renderQuote();
 
@@ -1106,10 +1485,14 @@ async function submitQuote(){
   }
 
 
-  const form = $("formArea");
+  const form =
+    $("formArea");
+
 
   const inputs =
-    form.querySelectorAll("input, textarea");
+    form.querySelectorAll(
+      "input, textarea"
+    );
 
 
   const data = {};
@@ -1129,28 +1512,43 @@ async function submitQuote(){
 
   try{
 
+    const API_BASE_URL =
+      getApiBaseUrl();
+
+
     const response =
-      await fetch("/api/estimate", {
+      await fetch(
+        `${API_BASE_URL}/api/estimate`,
+        {
 
-        method:"POST",
+          method:"POST",
 
-        headers:{
-          "Content-Type":
-            "application/json"
-        },
+          headers:{
+            "Content-Type":
+              "application/json"
+          },
 
-        body:JSON.stringify({
+          body:JSON.stringify({
 
-          company:data.company || "",
-          phone:data.phone || "",
-          email:data.email || "",
-          note:data.note || "",
+            company:
+              data.company || "",
 
-          items:quotes
+            phone:
+              data.phone || "",
 
-        })
+            email:
+              data.email || "",
 
-      });
+            note:
+              data.note || "",
+
+            items:
+              quotes
+
+          })
+
+        }
+      );
 
 
     const result =
@@ -1179,7 +1577,23 @@ async function submitQuote(){
 
       quotes = [];
 
-      $("qcount").textContent = "0";
+
+      $("qcount").textContent =
+        "0";
+
+
+      $("company").value =
+        "";
+
+      $("phone").value =
+        "";
+
+      $("email").value =
+        "";
+
+      $("note").value =
+        "";
+
 
       closeQuote();
 
@@ -1189,6 +1603,7 @@ async function submitQuote(){
   }catch(error){
 
     console.error(error);
+
 
     toast(
       "見積依頼の送信に失敗しました"
@@ -1205,14 +1620,18 @@ async function submitQuote(){
 
 function toast(text){
 
-  $("toast").textContent = text;
+  $("toast").textContent =
+    text;
 
-  $("toast").style.display = "block";
+
+  $("toast").style.display =
+    "block";
 
 
   setTimeout(function(){
 
-    $("toast").style.display = "none";
+    $("toast").style.display =
+      "none";
 
   },1800);
 
@@ -1232,6 +1651,24 @@ $("search").addEventListener(
       e.preventDefault();
 
       doSearch();
+
+    }
+
+  }
+);
+
+
+// ==============================
+// モーダル外クリック
+// ==============================
+
+$("modal").addEventListener(
+  "click",
+  function(e){
+
+    if(e.target === $("modal")){
+
+      closeQuote();
 
     }
 
