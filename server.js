@@ -72,7 +72,19 @@ async function initDatabase() {
     ALTER TABLE estimates
     ADD COLUMN IF NOT EXISTS access_token TEXT;
   `);
+  // ==============================
+  // ブランド画像テーブル
+  // ブランドごとの写真を保存
+  // ==============================
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS brand_images (
+      id BIGSERIAL PRIMARY KEY,
+      brand TEXT NOT NULL UNIQUE,
+      image_data TEXT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
   // ==============================
   // 既存の見積に
@@ -429,7 +441,163 @@ function loadProducts() {
 
 }
 
+// ==============================
+// ブランド画像取得API
+// ==============================
 
+app.get(
+  "/api/brand-images",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await pool.query(`
+          SELECT
+            brand,
+            image_data AS "imageData"
+          FROM brand_images
+          ORDER BY brand
+        `);
+
+      res.json({
+
+        success: true,
+
+        brandImages:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "ブランド画像取得エラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "ブランド画像の取得に失敗しました"
+
+      });
+
+    }
+
+  }
+);
+
+
+// ==============================
+// ブランド画像保存API
+// ==============================
+
+app.post(
+  "/api/brand-images",
+  async (req, res) => {
+
+    try {
+
+      const brand =
+        String(
+          req.body?.brand || ""
+        ).trim();
+
+      const imageData =
+        String(
+          req.body?.imageData || ""
+        ).trim();
+
+
+      if (!brand) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "ブランド名を入力してください"
+
+        });
+
+      }
+
+
+      if (!imageData) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "画像を選択してください"
+
+        });
+
+      }
+
+
+      await pool.query(
+        `
+          INSERT INTO brand_images (
+            brand,
+            image_data,
+            updated_at
+          )
+          VALUES (
+            $1,
+            $2,
+            CURRENT_TIMESTAMP
+          )
+          ON CONFLICT (brand)
+          DO UPDATE SET
+            image_data = EXCLUDED.image_data,
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [
+          brand,
+          imageData
+        ]
+      );
+
+
+      res.json({
+
+        success: true,
+
+        message:
+          "ブランド画像を保存しました",
+
+        brand,
+
+        imageData
+
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "ブランド画像保存エラー:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "ブランド画像の保存に失敗しました"
+
+      });
+
+    }
+
+  }
+);
 // ==============================
 // 商品一覧API
 // ==============================
