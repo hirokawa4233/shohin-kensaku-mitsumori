@@ -18,16 +18,6 @@
   --bg:#fff;
 }
 
-.notice{
-  font-size:15px;
-  font-weight:bold;
-  color:#d32f2f;
-  background:#fff3e0;
-  padding:8px 12px;
-  border-radius:6px;
-  display:inline-block;
-}
-
 *{
   box-sizing:border-box;
 }
@@ -50,6 +40,22 @@ input,
 textarea{
   font:inherit;
 }
+
+
+/* ==========================
+   注意書き
+========================== */
+
+.notice{
+  font-size:15px;
+  font-weight:bold;
+  color:#d32f2f;
+  background:#fff3e0;
+  padding:8px 12px;
+  border-radius:6px;
+  display:inline-block;
+}
+
 
 /* ==========================
    ヘッダー
@@ -83,6 +89,7 @@ textarea{
 .quote-btn:hover{
   background:rgba(255,255,255,.1);
 }
+
 
 /* ==========================
    検索エリア
@@ -144,6 +151,7 @@ textarea{
   font-size:15px;
 }
 
+
 /* ==========================
    商品一覧
 ========================== */
@@ -190,8 +198,8 @@ textarea{
   color:#a33;
   padding:20px;
   border-radius:12px;
-  white-space:pre-line;
 }
+
 
 /* ==========================
    商品カード
@@ -205,36 +213,85 @@ textarea{
   background:white;
 }
 
-.grid{
+/* 商品カード上段 */
+.product-main{
   display:grid;
-  grid-template-columns:1.1fr 1.3fr 1.2fr;
-  gap:8px 22px;
-  align-items:start;
+  grid-template-columns:150px 1.1fr 1.2fr 1fr;
+  gap:24px;
+  align-items:center;
 }
 
+/* 商品画像 */
+.product-image{
+  width:150px;
+  height:120px;
+  border:1px solid #d9dfe8;
+  border-radius:12px;
+  background:#fafafa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.product-image img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+/* 画像がない場合 */
+.no-image{
+  color:#9aa9bd;
+  font-size:13px;
+}
+
+/* 品番 */
 .code{
   font-size:14px;
   color:#163e76;
 }
 
+/* サイズ */
 .size{
   font-size:18px;
   font-weight:800;
-  margin-top:3px;
+  margin-top:5px;
   color:#142f55;
 }
 
+/* 項目ラベル */
 .label{
   color:#7893bb;
-  font-size:12px;
+  font-size:13px;
   margin-right:7px;
 }
+
+/* ブランド */
+.brand-name{
+  font-size:16px;
+  font-weight:700;
+  color:#163e76;
+}
+
+/* パターン */
+.pattern-name{
+  font-size:16px;
+  font-weight:700;
+  color:#163e76;
+}
+
+
+/* ==========================
+   商品下段
+========================== */
 
 .bottom{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-top:16px;
+  margin-top:18px;
+  padding-left:174px;
   gap:20px;
 }
 
@@ -246,9 +303,23 @@ textarea{
 }
 
 .value{
-  font-size:14px;
+  font-size:15px;
+  font-weight:600;
 }
 
+/* 参考価格 */
+.reference-price{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.reference-price strong{
+  font-size:21px;
+  color:#142f55;
+}
+
+/* 通常価格 */
 .price{
   display:flex;
   align-items:center;
@@ -260,6 +331,7 @@ textarea{
   color:#142f55;
 }
 
+/* 数量 */
 .qty{
   display:flex;
   align-items:center;
@@ -275,6 +347,7 @@ textarea{
   text-align:center;
 }
 
+/* 見積追加 */
 .add{
   border:1px solid #e99a6d;
   background:var(--orange);
@@ -295,6 +368,7 @@ textarea{
   padding:50px 20px;
   color:#6c86ad;
 }
+
 
 /* ==========================
    モーダル
@@ -413,6 +487,7 @@ textarea{
   background:#174b91;
 }
 
+
 /* ==========================
    トースト
 ========================== */
@@ -431,9 +506,27 @@ textarea{
   font-weight:700;
 }
 
+
 /* ==========================
    レスポンシブ
 ========================== */
+
+@media(max-width:900px){
+
+  .product-main{
+    grid-template-columns:130px 1fr 1fr;
+  }
+
+  .product-image{
+    width:130px;
+    height:110px;
+  }
+
+  .bottom{
+    padding-left:0;
+  }
+
+}
 
 @media(max-width:700px){
 
@@ -467,8 +560,14 @@ textarea{
     height:52px;
   }
 
-  .grid{
-    grid-template-columns:1fr;
+  .product-main{
+    grid-template-columns:100px 1fr;
+    gap:15px;
+  }
+
+  .product-image{
+    width:100px;
+    height:90px;
   }
 
   .bottom{
@@ -482,6 +581,10 @@ textarea{
 
   .price-area{
     gap:12px;
+  }
+
+  .quote-item{
+    flex-direction:column;
   }
 
 }
@@ -499,7 +602,8 @@ textarea{
   </div>
 
   <button class="quote-btn" onclick="openQuote()">
-    🛒 見積を見る (<span id="qcount">0</span>)
+    🛒 見積を見る
+    (<span id="qcount">0</span>)
   </button>
 
 </header>
@@ -509,9 +613,7 @@ textarea{
 
 <section class="search-box">
 
-  <h1>
-    商品を検索してください
-  </h1>
+  <h1>商品を検索してください</h1>
 
   <p>
     品番・サイズ・ブランド・パターンなどから検索できます
@@ -547,9 +649,7 @@ textarea{
 
   <div class="list-header">
 
-    <h2>
-      商品一覧
-    </h2>
+    <h2>商品一覧</h2>
 
     <div id="count"></div>
 
@@ -567,7 +667,8 @@ textarea{
     </h3>
 
     <div>
-      上の検索ボックスにキーワードを入力すると、<br>
+      上の検索ボックスにキーワードを入力すると、
+      <br>
       商品一覧が表示されます。
     </div>
 
@@ -622,10 +723,7 @@ textarea{
     <div id="quoteList"></div>
 
 
-    <div
-      id="formArea"
-      class="form-area"
-    >
+    <div id="formArea" class="form-area">
 
       <h3>
         見積依頼情報
@@ -699,13 +797,24 @@ textarea{
 </div>
 
 
-<div
-  id="toast"
-  class="toast"
-></div>
+<div id="toast" class="toast"></div>
 
 
 <script>
+
+
+// ==============================
+// API URL
+// ==============================
+
+const API_BASE_URL =
+  location.hostname ===
+  "shohin-kensaku-mitsumori-development.onrender.com"
+
+    ? "https://shohin-kensaku-mitsumori-development.onrender.com"
+
+    : "https://shohin-kensaku-mitsumori-api.onrender.com";
+
 
 // ==============================
 // 商品データ
@@ -721,26 +830,6 @@ let quotes = [];
 // ==============================
 
 let brandImages = {};
-
-
-// ==============================
-// API URL
-// ==============================
-
-function getApiBaseUrl(){
-
-  if(
-    location.hostname ===
-    "shohin-kensaku-mitsumori-development.onrender.com"
-  ){
-
-    return "https://shohin-kensaku-mitsumori-development.onrender.com";
-
-  }
-
-  return "https://shohin-kensaku-mitsumori-api.onrender.com";
-
-}
 
 
 // ==============================
@@ -824,11 +913,13 @@ function esc(value){
       function(m){
 
         return {
+
           "&":"&amp;",
           "<":"&lt;",
           ">":"&gt;",
           '"':"&quot;",
           "'":"&#39;"
+
         }[m];
 
       }
@@ -844,10 +935,6 @@ function esc(value){
 async function loadBrandImages(){
 
   try{
-
-    const API_BASE_URL =
-      getApiBaseUrl();
-
 
     const response =
       await fetch(
@@ -939,10 +1026,6 @@ async function loadProducts(){
   try{
 
     await loadBrandImages();
-
-
-    const API_BASE_URL =
-      getApiBaseUrl();
 
 
     const response =
@@ -1052,13 +1135,18 @@ function doSearch(){
         ];
 
 
+        // 通常検索
+
         const normalHit =
           values.some(function(v){
 
-            return norm(v).includes(nq);
+            return norm(v)
+              .includes(nq);
 
           });
 
+
+        // 数字だけで検索
 
         const digitHit =
           nd.length > 0 &&
@@ -1098,15 +1186,12 @@ function doSearch(){
 
   if(!hit.length){
 
-    $("list").innerHTML = `
-
-      <div class="empty">
-
-        該当する商品が見つかりませんでした。
-
-      </div>
-
-    `;
+    $("list").innerHTML =
+      `
+        <div class="empty">
+          該当する商品が見つかりませんでした。
+        </div>
+      `;
 
     return;
 
@@ -1130,8 +1215,41 @@ function doSearch(){
 
         <article class="card">
 
-          <div class="grid">
 
+          <!-- 商品情報 -->
+
+          <div class="product-main">
+
+
+            <!-- 商品画像 -->
+
+            <div class="product-image">
+
+              ${
+                brandImage
+
+                ? `
+
+                  <img
+                    src="${esc(brandImage)}"
+                    alt="${esc(brand)}"
+                  >
+
+                `
+
+                : `
+
+                  <span class="no-image">
+                    画像なし
+                  </span>
+
+                `
+              }
+
+            </div>
+
+
+            <!-- 品番・サイズ -->
 
             <div>
 
@@ -1146,50 +1264,22 @@ function doSearch(){
             </div>
 
 
+            <!-- ブランド -->
+
             <div>
 
               <span class="label">
                 ブランド
               </span>
 
-              <div
-                style="
-                  margin-top:8px;
-                "
-              >
-
-                ${
-                  brandImage
-                    ? `
-
-                      <img
-                        src="${esc(brandImage)}"
-                        alt="${esc(brand)}"
-                        style="
-                          width:90px;
-                          height:70px;
-                          object-fit:contain;
-                          border:1px solid #ddd;
-                          border-radius:8px;
-                          background:#fafafa;
-                          display:block;
-                          margin-bottom:6px;
-                        "
-                      >
-
-                    `
-                    : ""
-                }
-
-
-                <span>
-                  ${esc(p.brand)}
-                </span>
-
+              <div class="brand-name">
+                ${esc(p.brand)}
               </div>
 
             </div>
 
+
+            <!-- パターン -->
 
             <div>
 
@@ -1197,7 +1287,9 @@ function doSearch(){
                 パターン
               </span>
 
-              ${esc(p.pattern)}
+              <div class="pattern-name">
+                ${esc(p.pattern)}
+              </div>
 
             </div>
 
@@ -1205,16 +1297,30 @@ function doSearch(){
           </div>
 
 
+          <!-- 価格・数量・追加 -->
+
           <div class="bottom">
 
 
             <div class="price-area">
 
 
-              <div class="value">
-                A表：${fmt(p.a)}
+              <!-- ★ A表から参考価格に変更 -->
+
+              <div class="reference-price">
+
+                <span class="label">
+                  参考価格
+                </span>
+
+                <strong>
+                  ${fmt(p.a)}
+                </strong>
+
               </div>
 
+
+              <!-- 通常価格 -->
 
               <div class="price">
 
@@ -1228,6 +1334,8 @@ function doSearch(){
 
               </div>
 
+
+              <!-- 数量 -->
 
               <div class="qty">
 
@@ -1247,6 +1355,8 @@ function doSearch(){
 
             </div>
 
+
+            <!-- 見積追加 -->
 
             <button
               class="add"
@@ -1291,16 +1401,22 @@ function addQuote(p,index){
       return (
 
         String(x.code) ===
-        String(p.code) &&
+          String(p.code)
+
+        &&
 
         String(x.size) ===
-        String(p.size) &&
+          String(p.size)
+
+        &&
 
         String(x.brand) ===
-        String(p.brand) &&
+          String(p.brand)
+
+        &&
 
         String(x.pattern) ===
-        String(p.pattern)
+          String(p.pattern)
 
       );
 
@@ -1341,9 +1457,10 @@ function addQuote(p,index){
 
 function openQuote(){
 
-  $("modal").classList.add(
-    "open"
-  );
+  $("modal")
+    .classList
+    .add("open");
+
 
   renderQuote();
 
@@ -1352,9 +1469,9 @@ function openQuote(){
 
 function closeQuote(){
 
-  $("modal").classList.remove(
-    "open"
-  );
+  $("modal")
+    .classList
+    .remove("open");
 
 }
 
@@ -1363,19 +1480,22 @@ function renderQuote(){
 
   if(!quotes.length){
 
-    $("quoteList").innerHTML = `
+    $("quoteList").innerHTML =
+      `
 
-      <div class="empty">
+        <div class="empty">
 
-        見積内容はまだありません<br>
+          見積内容はまだありません
 
-        <small>
-          商品を検索して、見積に追加してください。
-        </small>
+          <br>
 
-      </div>
+          <small>
+            商品を検索して、見積に追加してください。
+          </small>
 
-    `;
+        </div>
+
+      `;
 
 
     $("formArea").style.display =
@@ -1512,10 +1632,6 @@ async function submitQuote(){
 
   try{
 
-    const API_BASE_URL =
-      getApiBaseUrl();
-
-
     const response =
       await fetch(
         `${API_BASE_URL}/api/estimate`,
@@ -1582,19 +1698,6 @@ async function submitQuote(){
         "0";
 
 
-      $("company").value =
-        "";
-
-      $("phone").value =
-        "";
-
-      $("email").value =
-        "";
-
-      $("note").value =
-        "";
-
-
       closeQuote();
 
     },700);
@@ -1642,42 +1745,25 @@ function toast(text){
 // Enterで検索
 // ==============================
 
-$("search").addEventListener(
-  "keydown",
-  function(e){
+$("search")
+  .addEventListener(
+    "keydown",
+    function(e){
 
-    if(e.key === "Enter"){
+      if(e.key === "Enter"){
 
-      e.preventDefault();
+        e.preventDefault();
 
-      doSearch();
+        doSearch();
 
-    }
-
-  }
-);
-
-
-// ==============================
-// モーダル外クリック
-// ==============================
-
-$("modal").addEventListener(
-  "click",
-  function(e){
-
-    if(e.target === $("modal")){
-
-      closeQuote();
+      }
 
     }
-
-  }
-);
+  );
 
 
 // ==============================
-// 起動時にExcel商品データ取得
+// 起動時に商品データ取得
 // ==============================
 
 loadProducts();
