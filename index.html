@@ -929,16 +929,16 @@ function esc(value){
 
 
 // ==============================
-// ブランド画像読み込み
+// パターン画像読み込み
 // ==============================
 
-async function loadBrandImages(){
+async function loadPatternImages(){
 
   try{
 
     const response =
       await fetch(
-        `${API_BASE_URL}/api/brand-images`,
+        `${API_BASE_URL}/api/pattern-images`,
         {
           cache:"no-store"
         }
@@ -956,26 +956,26 @@ async function loadBrandImages(){
 
       throw new Error(
         data.message ||
-        "ブランド画像の取得に失敗しました"
+        "パターン画像の取得に失敗しました"
       );
 
     }
 
 
-    brandImages = {};
+    patternImages = {};
 
 
     const rows =
-      Array.isArray(data.brandImages)
-        ? data.brandImages
+      Array.isArray(data.patternImages)
+        ? data.patternImages
         : [];
 
 
     rows.forEach(function(item){
 
-      const brand =
+      const pattern =
         String(
-          item.brand ?? ""
+          item.pattern ?? ""
         ).trim();
 
 
@@ -986,11 +986,11 @@ async function loadBrandImages(){
 
 
       if(
-        brand &&
+        pattern &&
         imageData
       ){
 
-        brandImages[brand] =
+        patternImages[pattern] =
           imageData;
 
       }
@@ -999,8 +999,8 @@ async function loadBrandImages(){
 
 
     console.log(
-      "ブランド画像を読み込みました:",
-      Object.keys(brandImages).length,
+      "パターン画像を読み込みました:",
+      Object.keys(patternImages).length,
       "件"
     );
 
@@ -1008,14 +1008,13 @@ async function loadBrandImages(){
   }catch(error){
 
     console.error(
-      "ブランド画像読み込みエラー:",
+      "パターン画像読み込みエラー:",
       error
     );
 
   }
 
 }
-
 
 // ==============================
 // 商品データ読み込み
