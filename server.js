@@ -236,14 +236,20 @@ async function initDatabase() {
 // ==================================================
 
 initDatabase()
-  .then(() => initializeProducts())
-  .catch((error) => {
+  .then(async () => {
+    await initializeProducts();
 
+    // 注文選択APIを登録
+    require("./order-selection-api")(app, pool);
+
+    console.log("注文選択APIを登録しました");
+    startServer();
+  })
+  .catch((error) => {
     console.error(
       "Database initialization error:",
       error
     );
-
   });
 
 
@@ -3163,9 +3169,10 @@ async function initializeProducts() {
 // サーバー起動
 // ==================================================
 
-app.listen(
-  PORT,
-  () => {
+function startServer() {
+  app.listen(
+    PORT,
+    () => {
 
     console.log(
       `Server running on port ${PORT}`
@@ -3195,3 +3202,4 @@ app.listen(
 
   }
 );
+}
