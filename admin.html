@@ -560,10 +560,11 @@ async function loadEstimates() {
                       </span>
 
                       <input
-                        type="text"
-                        class="edit-item-code"
-                        value="${esc(item.code)}"
-                      >
+  type="text"
+  class="edit-item-code"
+  value="${esc(item.code)}"
+  ${estimate.status === "ordered" ? "disabled" : ""}
+>
 
                     </div>
 
@@ -573,12 +574,12 @@ async function loadEstimates() {
                         サイズ
                       </span>
 
-                      <input
-                        type="text"
-                        class="edit-item-size"
-                        value="${esc(item.size)}"
-                      >
-
+                     <input
+  type="text"
+  class="edit-item-size"
+  value="${esc(item.size)}"
+  ${estimate.status === "ordered" ? "disabled" : ""}
+>
                     </div>
 
                     <div>
@@ -591,6 +592,7 @@ async function loadEstimates() {
                         type="text"
                         class="edit-item-brand"
                         value="${esc(item.brand)}"
+                        ${estimate.status === "ordered" ? "disabled" : ""}
                       >
 
                     </div>
@@ -605,6 +607,7 @@ async function loadEstimates() {
                         type="text"
                         class="edit-item-pattern"
                         value="${esc(item.pattern)}"
+                        ${estimate.status === "ordered" ? "disabled" : ""}
                       >
 
                     </div>
@@ -621,6 +624,7 @@ async function loadEstimates() {
                         value="${qty}"
                         min="1"
                         step="1"
+                        ${estimate.status === "ordered" ? "disabled" : ""}
                       >
 
                     </div>
@@ -637,6 +641,7 @@ async function loadEstimates() {
                         value="${price}"
                         min="0"
                         step="1"
+                        ${estimate.status === "ordered" ? "disabled" : ""}
                       >
 
                     </div>
@@ -659,6 +664,7 @@ async function loadEstimates() {
                         type="button"
                         class="item-delete-button"
                         onclick="removeEditItem(this)"
+                        ${estimate.status === "ordered" ? "disabled" : ""}
                       >
                         🗑️ 商品を削除
                       </button>
@@ -849,25 +855,31 @@ async function loadEstimates() {
                 </div>
 
 
-                <div class="edit-buttons">
+                ${
+  estimate.status !== "ordered"
+    ? `
+      <div class="edit-buttons">
 
-                  <button
-                    type="button"
-                    class="add-item-button"
-                    onclick="addEditItem('${esc(id)}')"
-                  >
-                    ➕ 商品を追加
-                  </button>
+        <button
+          type="button"
+          class="add-item-button"
+          onclick="addEditItem('${esc(id)}')"
+        >
+          ➕ 商品を追加
+        </button>
 
-                  <button
-                    type="button"
-                    class="save-items-button"
-                    onclick="saveEstimateItems('${esc(id)}')"
-                  >
-                    💾 見積内容を保存
-                  </button>
+        <button
+          type="button"
+          class="save-items-button"
+          onclick="saveEstimateItems('${esc(id)}')"
+        >
+          💾 見積内容を保存
+        </button>
 
-                </div>
+      </div>
+    `
+    : ""
+}
 
 
                 <div class="amount">
