@@ -598,10 +598,10 @@ async function loadEstimate() {
 
   try {
 
-    const response =
-      await fetch(
-        /api/order-selection/${encodeURIComponent(accessToken)}
-      );
+   const response =
+  await fetch(
+    `/api/order-selection/${encodeURIComponent(accessToken)}`
+  );
 
 
     const result =
@@ -662,26 +662,19 @@ async function loadEstimate() {
       estimate.id || "";
 
 
-    /* ------------------------------------
+        /* ------------------------------------
        商品
     ------------------------------------ */
 
-    const items =
-      Array.isArray(
-        estimate.items
-      )
-        ? estimate.items
-        : [];
+    const items = Array.isArray(estimate.items)
+      ? estimate.items
+      : [];
 
+    const itemsContainer = document.getElementById("items");
+    const totalElement = document.getElementById("total");
+    const orderButton = document.getElementById("order-button");
 
-    const itemsContainer =
-      document.getElementById(
-        "items"
-      );
-
-
-    let total = 0;
-
+    const alreadyOrdered = estimate.status === "ordered";
 
     if (!items.length) {
 
@@ -691,132 +684,227 @@ async function loadEstimate() {
         </div>
       `;
 
+      totalElement.textContent = "合計金額：0円（税抜）";
+
     } else {
 
-      itemsContainer.innerHTML =
-        items.map(
-          function(item) {
+      itemsContainer.innerHTML = items.map(function(item) {
 
-            const price =
-              Number(
-                item.price
-              ) || 0;
+        const price = Number(item.price) || 0;
+        const quantity = Number(item.quantity ?? item.qty) || 0;
 
+        const code =
+          item.code ??
+          item.productCode ??
+          item.product_code ??
+          "";
 
-            const quantity =
-              Number(
-                item.quantity ??
-                item.qty
-              ) || 0;
+        const itemId = Number(item.id);
 
+        // 注文後の表示
+        if (alreadyOrdered) {
 
-            const subtotal =
-              price * quantity;
+          const wasOrdered = item.wasOrdered === true;
+          const orderedQuantity = Number(item.qty) || 0;
+          const subtotal = Number(item.subtotal) || 0;
 
+          return `
+            <div class="item">
 
-            total += subtotal;
+              <div class="item-grid">
 
-
-            const code =
-              item.code ??
-              item.productCode ??
-              item.product_code ??
-              "";
-
-
-            return `
-
-              <div class="item">
-
-                <div class="item-grid">
-
-
-                  <div>
-
-                    <span class="label">
-                      品番
-                    </span>
-
-                    <div class="item-code">
-                      ${esc(code)}
-                    </div>
-
-                  </div>
-
-
-                  <div>
-
-                    <span class="label">
-                      サイズ
-                    </span>
-
-                    <div>
-                      ${esc(item.size || "")}
-                    </div>
-
-                  </div>
-
-
-                  <div>
-
-                    <span class="label">
-                      ブランド・パターン
-                    </span>
-
-                    <div>
-                      ${esc(item.brand || "")}
-                      ${esc(item.pattern || "")}
-                    </div>
-
-                  </div>
-
-
-                  <div>
-
-                    <span class="label">
-                      数量
-                    </span>
-
-                    <div>
-                      ${quantity}個
-                    </div>
-
-                  </div>
-
-
+                <div>
+                  <span class="label">品番</span>
+                  <div class="item-code">${esc(code)}</div>
                 </div>
 
+                <div>
+                  <span class="label">サイズ</span>
+                  <div>${esc(item.size || "")}</div>
+                </div>
 
-                <div
-                  style="
-                    text-align:right;
-                    margin-top:12px;
-                    font-weight:bold;
-                  "
-                >
+                <div>
+                  <span class="label">ブランド・パターン</span>
+                  <div>
+                    ${esc(item.brand || "")}
+                    ${esc(item.pattern || "")}
+                  </div>
+                </div>
 
-                  ${fmt(price)}円 ×
-                  ${quantity}個
-                  ＝
-                  ${fmt(subtotal)}円
-
+                <div>
+                  <span class="label">注文状況</span>
+                  <div>
+                    ${wasOrdered ? "✅ 注文済み" : "今回は注文なし"}
+                  </div>
                 </div>
 
               </div>
 
-            `;
+              ${
+                wasOrdered
+                  ? `
+                    <div style="text-align:right; margin-top:12px; font-weight:bold;">
+                      ${fmt(price)}円 × ${orderedQuantity}個 ＝ ${fmt(subtotal)}円
+                    </div>
+                    ${
+                      item.remark
+                        ? `<div style="margin-top:8px;">備考：${esc(item.remark)}</div>`
+                        : ""
+                    }
+                  `
+                  : ""
+              }
 
-          }
-        ).join("");
+            </div>
+          `;
+
+        }
+
+        // 注文前の選択画面
+        return `
+          <div class="item" data-item-id="${itemId}" data-price="${price}">
+
+            <div class="item-grid">
+
+              <div>
+                <span class="label">品番</span>
+                <div class="item-code">${esc(code)}</div>
+              </div>
+
+              <div>
+                <span class="label">サイズ</span>
+                <div>${esc(item.size || "")}</div>
+              </div>
+
+              <div>
+                <span class="label">ブランド・パターン</span>
+                <div>
+                  ${esc(item.brand || "")}
+                  ${esc(item.pattern || "")}
+                </div>
+              </div>
+
+              <div>
+                <span class="label">見積数量</span>
+                <div>${quantity}個</div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:14px;">
+
+              <label style="display:flex; align-items:center; gap:8px; font-weight:bold;">
+                <input
+                  type="checkbox"
+                  class="order-item-checkbox"
+                  style="width:20px; height:20px;"
+                >
+                この商品を注文する
+              </label>
+
+              <div style="margin-top:12px;">
+                数量：
+                <input
+                  type="number"
+                  class="order-item-quantity"
+                  value="${quantity}"
+                  min="1"
+                  max="100000"
+                  disabled
+                  style="width:90px; padding:6px;"
+                >
+                個
+              </div>
+
+              <div style="margin-top:10px;">
+                備考：
+                <input
+                  type="text"
+                  class="order-item-remark"
+                  maxlength="1000"
+                  placeholder="必要な場合のみ入力"
+                  disabled
+                  style="width:100%; padding:8px; box-sizing:border-box;"
+                >
+              </div>
+
+              <div style="text-align:right; margin-top:12px; font-weight:bold;">
+                小計：
+                <span class="order-item-subtotal">0</span>円
+              </div>
+
+            </div>
+
+          </div>
+        `;
+
+      }).join("");
+
+      if (alreadyOrdered) {
+
+        const orderTotal = Number(estimate.order?.total) || 0;
+
+        totalElement.textContent =
+          `注文合計金額：${fmt(orderTotal)}円（税抜）`;
+
+      } else {
+
+        // 選択内容に応じて金額を再計算
+        function updateOrderTotals() {
+
+          let total = 0;
+          let selectedCount = 0;
+
+          itemsContainer.querySelectorAll(".item").forEach(function(row) {
+
+            const checkbox = row.querySelector(".order-item-checkbox");
+            if (!checkbox) return;
+
+            const quantityInput = row.querySelector(".order-item-quantity");
+            const remarkInput = row.querySelector(".order-item-remark");
+            const subtotalElement = row.querySelector(".order-item-subtotal");
+
+            const selected = checkbox.checked;
+
+            quantityInput.disabled = !selected;
+            remarkInput.disabled = !selected;
+
+            let subtotal = 0;
+
+            if (selected) {
+              const price = Number(row.dataset.price) || 0;
+              const quantity = Number(quantityInput.value) || 0;
+
+              if (quantity >= 1 && quantity <= 100000) {
+                subtotal = price * quantity;
+                total += subtotal;
+                selectedCount++;
+              }
+            }
+
+            subtotalElement.textContent = fmt(subtotal);
+
+          });
+
+          totalElement.textContent =
+            `選択商品の合計金額：${fmt(total)}円（税抜）`;
+
+          orderButton.disabled = selectedCount === 0;
+        }
+
+        itemsContainer.querySelectorAll(
+          ".order-item-checkbox, .order-item-quantity"
+        ).forEach(function(input) {
+          input.addEventListener("change", updateOrderTotals);
+          input.addEventListener("input", updateOrderTotals);
+        });
+
+        // 初期状態では注文商品未選択
+        updateOrderTotals();
+
+      }
 
     }
-
-
-    document.getElementById(
-      "total"
-    ).textContent =
-      `合計金額：${fmt(total)}円 （税抜）`;
-
 
     /* ------------------------------------
        納期
@@ -929,136 +1017,145 @@ async function loadEstimate() {
 }
 
 
+
 /* ========================================
    注文確認
 ======================================== */
 
 async function confirmOrder() {
 
-  const confirmed =
-    confirm(
-      "この見積内容で注文を確定しますか？\n\n" +
-      "内容をご確認のうえ「OK」を押してください。"
-    );
-
-
-  if (!confirmed) {
-
-    return;
-
-  }
-
-
   const button =
-    document.getElementById(
-      "order-button"
-    );
-
+    document.getElementById("order-button");
 
   const accessToken =
     getAccessToken();
 
-
   if (!accessToken) {
-
-    alert(
-      "注文URLが正しくありません。"
-    );
-
+    alert("注文URLが正しくありません。");
     return;
+  }
+
+  // チェックされた商品を取得
+  const selectedItems = [];
+
+  const itemRows =
+    document.querySelectorAll("#items .item");
+
+  for (const row of itemRows) {
+
+    const checkbox =
+      row.querySelector(".order-item-checkbox");
+
+    if (!checkbox || !checkbox.checked) {
+      continue;
+    }
+
+    const estimateItemId =
+      Number(row.dataset.itemId);
+
+    const quantity =
+      Number(
+        row.querySelector(".order-item-quantity").value
+      );
+
+    const remark =
+      row.querySelector(".order-item-remark").value.trim();
+
+    if (
+      !Number.isInteger(estimateItemId) ||
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > 100000
+    ) {
+      alert("商品の数量を正しく入力してください。");
+      return;
+    }
+
+    selectedItems.push({
+      estimateItemId: estimateItemId,
+      quantity: quantity,
+      remark: remark
+    });
 
   }
 
+  if (!selectedItems.length) {
+    alert("注文する商品を1つ以上選択してください。");
+    return;
+  }
+
+  const confirmed =
+    confirm(
+      "選択した商品だけを注文します。\n\n" +
+      "注文内容をご確認のうえ「OK」を押してください。"
+    );
+
+  if (!confirmed) {
+    return;
+  }
 
   try {
 
-    button.disabled =
-      true;
-
-
-    button.textContent =
-      "⏳ 注文を受け付けています...";
-
+    button.disabled = true;
+    button.textContent = "⏳ 注文を受け付けています...";
 
     const response =
       await fetch(
-        `/api/order/${encodeURIComponent(accessToken)}`,
+        `/api/order-selection/${encodeURIComponent(accessToken)}`,
         {
           method: "POST",
 
           headers: {
-            "Content-Type":
-              "application/json"
-          }
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            items: selectedItems
+          })
         }
       );
 
-
     const result =
       await response.json();
-
 
     if (
       !response.ok ||
       !result.success
     ) {
-
       throw new Error(
         result.message ||
         "注文の受付に失敗しました"
       );
-
     }
-
 
     /* ------------------------------------
        注文完了画面
     ------------------------------------ */
 
     const estimate =
-      result.estimate;
+  result.estimate;
 
+// 注文後の最新情報を読み込み直す
+await loadEstimate();
 
-    document.getElementById(
-      "content"
-    ).classList.add(
-      "hidden"
-    );
+// 注文完了メッセージを表示
+document.getElementById("success")
+  .classList.remove("hidden");
 
-
-    document.getElementById(
-      "success"
-    ).classList.remove(
-      "hidden"
-    );
-
-
-    document.getElementById(
-      "success-estimate-id"
-    ).textContent =
-      `見積番号：${estimate.id}`;
-
-
+document.getElementById("success-estimate-id")
+  .textContent =
+    `見積番号：${estimate.id}`;
   } catch (error) {
 
-    console.error(
-      "注文エラー:",
-      error
-    );
-
+    console.error("注文エラー:", error);
 
     alert(
       "注文の受付に失敗しました。\n\n" +
       error.message
     );
 
-
-    button.disabled =
-      false;
-
-
-    button.textContent =
-      "🛒 この内容で注文する";
+    button.disabled = false;
+    button.textContent = "🛒 この内容で注文する";
 
   }
 
