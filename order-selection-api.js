@@ -6,14 +6,17 @@
 
 module.exports = function registerOrderSelectionApi(app, pool) {
 
+  // ========================================
   // 注文用テーブルの準備
+  // ========================================
+
   const initializeOrderSelectionTables = async () => {
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS order_selection_orders (
         id BIGSERIAL PRIMARY KEY,
         estimate_id BIGINT NOT NULL UNIQUE
-        REFERENCES estimates(id) ON DELETE CASCADE,  
+          REFERENCES estimates(id) ON DELETE CASCADE,
         total NUMERIC NOT NULL DEFAULT 0,
         ordered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
@@ -41,8 +44,11 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
   const tablesReady = initializeOrderSelectionTables();
 
-  
-  // お客様画面用：見積商品と商品IDを取得
+
+  // ========================================
+  // お客様画面用：見積商品取得
+  // ========================================
+
   app.get(
     "/api/order-selection/:accessToken",
     async (req, res) => {
@@ -81,7 +87,11 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
         const estimate = estimateResult.rows[0];
 
-        // すでに注文済みなら保存済みの注文内容を取得
+
+        // ------------------------------------
+        // 注文済みの場合
+        // ------------------------------------
+
         if (estimate.status === "ordered") {
 
           const orderResult = await pool.query(
@@ -97,6 +107,8 @@ module.exports = function registerOrderSelectionApi(app, pool) {
             [estimate.id]
           );
 
+
+          // 新しい注文選択データがある場合
           if (orderResult.rowCount) {
 
             const order = orderResult.rows[0];
@@ -129,7 +141,7 @@ module.exports = function registerOrderSelectionApi(app, pool) {
               pattern: item.pattern || "",
               price: Number(item.price) || 0,
               qty: Number(item.orderedQuantity) || 0,
-              wasOrdered: item.wasOrdered,
+              wasOrdered: item.wasOrdered === true,
               subtotal: Number(item.subtotal) || 0,
               remark: item.remark || ""
             }));
@@ -140,11 +152,68 @@ module.exports = function registerOrderSelectionApi(app, pool) {
               orderedAt: order.orderedAt
             };
 
+          } else {
+
+            // ------------------------------------
+            // 過去の注文データの場合
+            // ------------------------------------
+
+            const itemsResult = await pool.query(
+              `
+                SELECT
+                  id,
+                  product_code AS code,
+                  size,
+                  brand,
+                  pattern,
+                  price,
+                  quantity AS qty
+                FROM estimate_items
+                WHERE estimate_id = $1
+                ORDER BY id
+              `,
+              [estimate.id]
+            );
+
+            let oldTotal = 0;
+
+            estimate.items = itemsResult.rows.map(item => {
+
+              const price = Number(item.price) || 0;
+              const quantity = Number(item.qty) || 0;
+              const subtotal = price * quantity;
+
+              oldTotal += subtotal;
+
+              return {
+                id: Number(item.id),
+                code: item.code || "",
+                size: item.size || "",
+                brand: item.brand || "",
+                pattern: item.pattern || "",
+                price,
+                qty: quantity,
+                wasOrdered: true,
+                subtotal,
+                remark: ""
+              };
+
+            });
+
+            estimate.order = {
+              id: null,
+              total: oldTotal,
+              orderedAt: estimate.orderedAt
+            };
+
           }
 
         } else {
 
-          // 注文前は元の見積商品を取得
+          // ------------------------------------
+          // 注文前：元の見積商品を取得
+          // ------------------------------------
+
           const itemsResult = await pool.query(
             `
               SELECT
@@ -181,7 +250,10 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
       } catch (error) {
 
-        console.error("注文選択データ取得エラー:", error);
+        console.error(
+          "注文選択データ取得エラー:",
+          error
+        );
 
         return res.status(500).json({
           success: false,
@@ -193,14 +265,17 @@ module.exports = function registerOrderSelectionApi(app, pool) {
     }
   );
 
+
+  // ========================================
   // お客様画面用：選択商品の注文確定
+  // ========================================
+
   app.post(
     "/api/order-selection/:accessToken",
     async (req, res) => {
 
-      const client = await pool.connect();
-
-      let notificationData = null;
+      let client = null;
+      let transactionStarted = false;
 
       try {
 
@@ -210,6 +285,11 @@ module.exports = function registerOrderSelectionApi(app, pool) {
           String(req.params.accessToken || "").trim();
 
         const selectedItems = req.body?.items;
+
+
+        // ------------------------------------
+        // 注文内容の基本チェック
+        // ------------------------------------
 
         if (
           !Array.isArray(selectedItems) ||
@@ -221,12 +301,36 @@ module.exports = function registerOrderSelectionApi(app, pool) {
           });
         }
 
-        await client.query("BEGIN");
+        if (selectedItems.length > 1000) {
+          return res.status(400).json({
+            success: false,
+            message: "注文商品数が多すぎます"
+          });
+        }
 
+
+        // ------------------------------------
+        // データベース接続
+        // ------------------------------------
+
+        client = await pool.connect();
+
+        await client.query("BEGIN");
+        transactionStarted = true;
+
+
+        // ------------------------------------
         // 見積をロックして二重注文を防ぐ
+        // ------------------------------------
+
         const estimateResult = await client.query(
           `
-            SELECT id, company, phone, email, status
+            SELECT
+              id,
+              company,
+              phone,
+              email,
+              status
             FROM estimates
             WHERE access_token = $1
             FOR UPDATE
@@ -235,26 +339,36 @@ module.exports = function registerOrderSelectionApi(app, pool) {
         );
 
         if (!estimateResult.rowCount) {
+
           await client.query("ROLLBACK");
+          transactionStarted = false;
 
           return res.status(404).json({
             success: false,
             message: "見積データが見つかりません"
           });
+
         }
 
         const estimate = estimateResult.rows[0];
 
         if (estimate.status === "ordered") {
+
           await client.query("ROLLBACK");
+          transactionStarted = false;
 
           return res.status(409).json({
             success: false,
             message: "この見積はすでに注文済みです"
           });
+
         }
 
-        // 見積に登録されている商品をDBから取得
+
+        // ------------------------------------
+        // 元の見積商品を取得
+        // ------------------------------------
+
         const estimateItemsResult = await client.query(
           `
             SELECT
@@ -275,15 +389,22 @@ module.exports = function registerOrderSelectionApi(app, pool) {
         const estimateItems = estimateItemsResult.rows;
 
         if (!estimateItems.length) {
+
           await client.query("ROLLBACK");
+          transactionStarted = false;
 
           return res.status(400).json({
             success: false,
             message: "見積商品がありません"
           });
+
         }
 
+
+        // ------------------------------------
         // 選択内容を検証
+        // ------------------------------------
+
         const selectedMap = new Map();
 
         for (const selected of selectedItems) {
@@ -300,12 +421,15 @@ module.exports = function registerOrderSelectionApi(app, pool) {
             remark.length > 1000 ||
             selectedMap.has(itemId)
           ) {
+
             await client.query("ROLLBACK");
+            transactionStarted = false;
 
             return res.status(400).json({
               success: false,
               message: "注文商品の指定内容が正しくありません"
             });
+
           }
 
           selectedMap.set(itemId, {
@@ -315,7 +439,11 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
         }
 
+
+        // ------------------------------------
         // 見積に存在しない商品IDを拒否
+        // ------------------------------------
+
         const estimateItemIds = new Set(
           estimateItems.map(item => Number(item.id))
         );
@@ -323,19 +451,26 @@ module.exports = function registerOrderSelectionApi(app, pool) {
         for (const itemId of selectedMap.keys()) {
 
           if (!estimateItemIds.has(itemId)) {
+
             await client.query("ROLLBACK");
+            transactionStarted = false;
 
             return res.status(400).json({
               success: false,
               message: "見積にない商品が指定されています"
             });
+
           }
 
         }
 
+
+        // ------------------------------------
+        // 注文ヘッダーを保存
+        // ------------------------------------
+
         const orderedAt = new Date();
 
-        // 注文ヘッダーを保存
         const orderResult = await client.query(
           `
             INSERT INTO order_selection_orders (
@@ -352,12 +487,18 @@ module.exports = function registerOrderSelectionApi(app, pool) {
         const orderId = orderResult.rows[0].id;
 
         let total = 0;
+
         const notificationItems = [];
 
-        // 注文した商品・注文しなかった商品をすべて保存
+
+        // ------------------------------------
+        // 全商品を注文履歴に保存
+        // ------------------------------------
+
         for (const item of estimateItems) {
 
           const selected = selectedMap.get(Number(item.id));
+
           const wasOrdered = Boolean(selected);
 
           const quantity = wasOrdered
@@ -365,6 +506,7 @@ module.exports = function registerOrderSelectionApi(app, pool) {
             : 0;
 
           const price = Number(item.price) || 0;
+
           const subtotal = wasOrdered
             ? price * quantity
             : 0;
@@ -374,6 +516,7 @@ module.exports = function registerOrderSelectionApi(app, pool) {
             : "";
 
           total += subtotal;
+
 
           await client.query(
             `
@@ -407,7 +550,10 @@ module.exports = function registerOrderSelectionApi(app, pool) {
             ]
           );
 
+
+          // LINE通知用には注文商品だけを追加
           if (wasOrdered) {
+
             notificationItems.push({
               code: item.product_code || "",
               size: item.size || "",
@@ -418,11 +564,16 @@ module.exports = function registerOrderSelectionApi(app, pool) {
               subtotal,
               remark
             });
+
           }
 
         }
 
-        // 合計金額を保存
+
+        // ------------------------------------
+        // 注文合計金額を保存
+        // ------------------------------------
+
         await client.query(
           `
             UPDATE order_selection_orders
@@ -432,7 +583,11 @@ module.exports = function registerOrderSelectionApi(app, pool) {
           [total, orderId]
         );
 
+
+        // ------------------------------------
         // 既存の注文管理にも記録
+        // ------------------------------------
+
         await client.query(
           `
             INSERT INTO orders (
@@ -445,7 +600,11 @@ module.exports = function registerOrderSelectionApi(app, pool) {
           [estimate.id, orderedAt]
         );
 
+
+        // ------------------------------------
         // 見積を注文済みにする
+        // ------------------------------------
+
         await client.query(
           `
             UPDATE estimates
@@ -457,16 +616,19 @@ module.exports = function registerOrderSelectionApi(app, pool) {
           [orderedAt, estimate.id]
         );
 
+
+        // ------------------------------------
+        // トランザクション確定
+        // ------------------------------------
+
         await client.query("COMMIT");
+        transactionStarted = false;
 
-        notificationData = {
-          estimate,
-          orderedAt,
-          notificationItems,
-          total
-        };
 
-        // 注文完了をLINEで通知
+        // ------------------------------------
+        // LINE通知
+        // ------------------------------------
+
         const adminUserId =
           process.env.LINE_ADMIN_USER_ID;
 
@@ -520,41 +682,70 @@ module.exports = function registerOrderSelectionApi(app, pool) {
             );
 
             if (!lineResponse.ok) {
+
               console.error(
                 "注文LINE通知エラー:",
                 lineResponse.status,
                 await lineResponse.text()
               );
+
             }
 
           } catch (lineError) {
-            console.error("注文LINE通知送信エラー:", lineError);
+
+            console.error(
+              "注文LINE通知送信エラー:",
+              lineError
+            );
+
           }
 
         }
 
+
+        // ------------------------------------
+        // 注文成功レスポンス
+        // ------------------------------------
+
         return res.json({
           success: true,
           message: "注文を受け付けました",
+
           estimate: {
             id: estimate.id,
             company: estimate.company,
             status: "ordered",
             orderedAt
           },
+
           order: {
             id: orderId,
             total,
             orderedAt,
             items: notificationItems
           }
+
         });
 
       } catch (error) {
 
-        await client.query("ROLLBACK");
+        if (client && transactionStarted) {
 
-        console.error("注文選択APIエラー:", error);
+          try {
+            await client.query("ROLLBACK");
+          } catch (rollbackError) {
+            console.error(
+              "注文ロールバックエラー:",
+              rollbackError
+            );
+          }
+
+        }
+
+        console.error(
+          "注文選択APIエラー:",
+          error
+        );
 
         return res.status(500).json({
           success: false,
@@ -563,7 +754,9 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
       } finally {
 
-        client.release();
+        if (client) {
+          client.release();
+        }
 
       }
 
@@ -571,7 +764,10 @@ module.exports = function registerOrderSelectionApi(app, pool) {
   );
 
 
-  // 管理画面用：注文内容を取得
+  // ========================================
+  // 管理画面用：注文内容取得
+  // ========================================
+
   app.get(
     "/api/admin/order-selection/:estimateId",
     async (req, res) => {
@@ -583,11 +779,14 @@ module.exports = function registerOrderSelectionApi(app, pool) {
         const estimateId = Number(req.params.estimateId);
 
         if (!Number.isSafeInteger(estimateId)) {
+
           return res.status(400).json({
             success: false,
             message: "見積番号が正しくありません"
           });
+
         }
+
 
         const orderResult = await pool.query(
           `
@@ -603,13 +802,16 @@ module.exports = function registerOrderSelectionApi(app, pool) {
         );
 
         if (!orderResult.rowCount) {
+
           return res.json({
             success: true,
             order: null
           });
+
         }
 
         const order = orderResult.rows[0];
+
 
         const itemsResult = await pool.query(
           `
@@ -631,12 +833,18 @@ module.exports = function registerOrderSelectionApi(app, pool) {
           [order.id]
         );
 
+
         order.total = Number(order.total) || 0;
+
         order.items = itemsResult.rows.map(item => ({
           ...item,
+          wasOrdered: item.wasOrdered === true,
+          orderedQuantity: Number(item.orderedQuantity) || 0,
           unitPrice: Number(item.unitPrice) || 0,
-          subtotal: Number(item.subtotal) || 0
+          subtotal: Number(item.subtotal) || 0,
+          remark: item.remark || ""
         }));
+
 
         return res.json({
           success: true,
@@ -645,7 +853,10 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
       } catch (error) {
 
-        console.error("管理画面注文取得エラー:", error);
+        console.error(
+          "管理画面注文取得エラー:",
+          error
+        );
 
         return res.status(500).json({
           success: false,
@@ -656,6 +867,7 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
     }
   );
+
 
   console.log("注文選択APIを登録しました");
 
