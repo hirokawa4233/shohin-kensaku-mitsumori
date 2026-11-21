@@ -683,13 +683,25 @@ async function loadEstimates() {
             String(estimate.id);
 
           const statusHtml =
-            estimate.status === "ordered"
-              ? `
-                <div class="order-status">
-                  🟢 注文済み
-                </div>
-              `
-              : "";
+  estimate.status === "ordered"
+    ? `
+      <div class="order-status">
+        🟢 注文済み
+      </div>
+
+      <button
+        type="button"
+        class="url-create-button"
+        onclick="loadOrderSelectionDetails('${esc(id)}')"
+      >
+        📦 注文内容を確認
+      </button>
+
+      <div
+        id="order-selection-details-${esc(id)}"
+      ></div>
+    `
+    : "";
 
           const orderUrl =
             estimate.accessToken
