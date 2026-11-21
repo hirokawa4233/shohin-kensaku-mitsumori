@@ -2045,6 +2045,151 @@ function esc(value) {
 
 loadEstimates();
 
+/* ========================================
+   注文内容を管理画面に表示
+======================================== */
+
+async function loadOrderSelectionDetails(estimateId) {
+
+  const container =
+    document.getElementById(
+      `order-selection-details-${estimateId}`
+    );
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "注文内容を読み込み中...";
+
+  try {
+
+    const response = await fetch(
+      `/api/admin/order-selection/${encodeURIComponent(estimateId)}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || "注文内容の取得に失敗しました"
+      );
+    }
+
+    const order = result.order;
+
+    if (!order) {
+
+      container.innerHTML = `
+        <div class="empty">
+          注文選択データがありません。
+          （旧方式の注文の可能性があります）
+        </div>
+      `;
+
+      return;
+    }
+
+    const orderedAt = order.orderedAt
+      ? new Date(order.orderedAt).toLocaleString("ja-JP")
+      : "不明";
+
+    const itemHtml = order.items.map(item => {
+
+      const ordered = item.wasOrdered === true;
+
+      return `
+        <div class="item">
+
+          <div>
+            ${ordered
+              ? "🟢 注文済み"
+              : "⚪ 今回は注文なし"}
+          </div>
+
+          <div>
+            品番：${esc(item.code || "")}
+          </div>
+
+          <div>
+            サイズ：${esc(item.size || "")}
+          </div>
+
+          <div>
+            ブランド・パターン：
+            ${esc(item.brand || "")}
+            ${esc(item.pattern || "")}
+          </div>
+
+          ${
+            ordered
+              ? `
+                <div>
+                  注文数量：
+                  ${Number(item.orderedQuantity) || 0}個
+                </div>
+
+                <div>
+                  単価：
+                  ${fmt(Number(item.unitPrice) || 0)}円
+                </div>
+
+                <div>
+                  小計：
+                  ${fmt(Number(item.subtotal) || 0)}円
+                </div>
+
+                <div>
+                  備考：
+                  ${esc(item.remark || "なし")}
+                </div>
+              `
+              : ""
+          }
+
+        </div>
+      `;
+
+    }).join("");
+
+    container.innerHTML = `
+
+      <div class="items-title">
+        📦 注文内容の詳細
+      </div>
+
+      <div class="items-list">
+        ${itemHtml}
+      </div>
+
+      <div class="amount">
+        注文合計：
+        <strong>
+          ${fmt(order.total)}円（税抜）
+        </strong>
+      </div>
+
+      <div>
+        注文日時：${esc(orderedAt)}
+      </div>
+
+    `;
+
+  } catch (error) {
+
+    console.error(error);
+
+    container.innerHTML = `
+      <div class="error">
+        注文内容を表示できませんでした。
+        ${esc(error.message)}
+      </div>
+    `;
+
+  }
+
+}
+
 </script>
 
 </body>
