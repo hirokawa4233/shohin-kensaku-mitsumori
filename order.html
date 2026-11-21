@@ -469,7 +469,10 @@ header p {
       id="success-estimate-id"
       style="margin-top:15px;font-weight:bold;"
     ></div>
-
+<div
+  id="success-order-details"
+  style="margin-top:20px;text-align:left;"
+></div>
   </div>
 
 
@@ -1128,23 +1131,129 @@ async function confirmOrder() {
       );
     }
 
-    /* ------------------------------------
-       注文完了画面
-    ------------------------------------ */
 
-    const estimate =
-  result.estimate;
+/* ------------------------------------
+   注文完了画面
+------------------------------------ */
 
-// 注文後の最新情報を読み込み直す
-await loadEstimate();
+const estimate = result.estimate;
 
-// 注文完了メッセージを表示
+// 商品画面を隠す
+document.getElementById("content")
+  .classList.add("hidden");
+
+// 注文完了メッセージを先に表示
 document.getElementById("success")
   .classList.remove("hidden");
 
 document.getElementById("success-estimate-id")
-  .textContent =
-    `見積番号：${estimate.id}`;
+  .textContent = `見積番号：${estimate.id}`;
+
+// 注文詳細の表示欄
+const detailsElement =
+  document.getElementById("success-order-details");
+
+// 注文は受付済み。詳細表示だけを別に処理する
+try {
+
+  const detailResponse = await fetch(
+    `/api/order-selection/${encodeURIComponent(accessToken)}`
+  );
+
+  const detailResult = await detailResponse.json();
+
+  if (!detailResponse.ok || !detailResult.success) {
+    throw new Error("注文内容を取得できませんでした");
+  }
+
+  const resultItems =
+    detailResult.estimate?.items || [];
+
+  detailsElement.innerHTML = resultItems.map(item => {
+
+    const wasOrdered = item.wasOrdered === true;
+
+    return `
+      <div class="item" style="margin-bottom:12px;">
+
+        <strong>
+          ${wasOrdered
+            ? "🟢 注文済み"
+            : "⚪ 今回は注文なし"}
+        </strong>
+
+        <div>品番：${esc(item.code || "")}</div>
+        <div>サイズ：${esc(item.size || "")}</div>
+
+        <div>
+          ブランド・パターン：
+          ${esc(item.brand || "")}
+          ${esc(item.pattern || "")}
+        </div>
+
+        ${
+          wasOrdered
+            ? `
+              <div>
+                注文数量：${Number(item.qty) || 0}個
+              </div>
+
+              <div>
+                単価：${fmt(Number(item.price) || 0)}円
+              </div>
+
+              <div>
+                小計：${fmt(Number(item.subtotal) || 0)}円
+              </div>
+
+              <div>
+                備考：${esc(item.remark || "なし")}
+              </div>
+            `
+            : ""
+        }
+
+      </div>
+    `;
+
+  }).join("");
+
+  // 注文合計金額と注文日時
+  const orderTotal =
+    Number(detailResult.estimate?.order?.total) || 0;
+
+  const orderedAt =
+    detailResult.estimate?.order?.orderedAt
+      ? new Date(
+          detailResult.estimate.order.orderedAt
+        ).toLocaleString("ja-JP")
+      : "不明";
+
+  detailsElement.innerHTML += `
+    <div class="amount" style="margin-top:20px;">
+      注文合計金額：
+      ${fmt(orderTotal)}円（税抜）
+    </div>
+
+    <div style="margin-top:10px;">
+      注文日時：${esc(orderedAt)}
+    </div>
+  `;
+
+} catch (detailError) {
+
+  console.error("注文詳細表示エラー:", detailError);
+
+  detailsElement.innerHTML = `
+    <div class="error">
+      ご注文は受け付けています。
+      注文詳細を表示できませんでした。
+      お手数ですが弊社までお問い合わせください。
+    </div>
+  `;
+
+}
+
   } catch (error) {
 
     console.error("注文エラー:", error);
