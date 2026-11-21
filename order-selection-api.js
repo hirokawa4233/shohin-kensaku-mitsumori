@@ -41,6 +41,7 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
   const tablesReady = initializeOrderSelectionTables();
 
+  
   // お客様画面用：見積商品と商品IDを取得
   app.get(
     "/api/order-selection/:accessToken",
@@ -80,34 +81,100 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
         const estimate = estimateResult.rows[0];
 
-        const itemsResult = await pool.query(
-          `
-            SELECT
-              id,
-              product_code AS code,
-              size,
-              brand,
-              pattern,
-              price,
-              quantity AS qty
-            FROM estimate_items
-            WHERE estimate_id = $1
-            ORDER BY id
-          `,
-          [estimate.id]
-        );
+        // すでに注文済みなら保存済みの注文内容を取得
+        if (estimate.status === "ordered") {
 
-        estimate.items = itemsResult.rows.map(item => ({
-          id: Number(item.id),
-          code: item.code || "",
-          size: item.size || "",
-          brand: item.brand || "",
-          pattern: item.pattern || "",
-          price: Number(item.price) || 0,
-          qty: Number(item.qty) || 1
-        }));
+          const orderResult = await pool.query(
+            `
+              SELECT
+                id,
+                total,
+                ordered_at AS "orderedAt"
+              FROM order_selection_orders
+              WHERE estimate_id = $1
+              LIMIT 1
+            `,
+            [estimate.id]
+          );
 
-        res.json({
+          if (orderResult.rowCount) {
+
+            const order = orderResult.rows[0];
+
+            const itemsResult = await pool.query(
+              `
+                SELECT
+                  estimate_item_id AS id,
+                  product_code AS code,
+                  size,
+                  brand,
+                  pattern,
+                  was_ordered AS "wasOrdered",
+                  ordered_quantity AS "orderedQuantity",
+                  unit_price AS price,
+                  subtotal,
+                  remark
+                FROM order_selection_items
+                WHERE order_id = $1
+                ORDER BY id
+              `,
+              [order.id]
+            );
+
+            estimate.items = itemsResult.rows.map(item => ({
+              id: Number(item.id),
+              code: item.code || "",
+              size: item.size || "",
+              brand: item.brand || "",
+              pattern: item.pattern || "",
+              price: Number(item.price) || 0,
+              qty: Number(item.orderedQuantity) || 0,
+              wasOrdered: item.wasOrdered,
+              subtotal: Number(item.subtotal) || 0,
+              remark: item.remark || ""
+            }));
+
+            estimate.order = {
+              id: Number(order.id),
+              total: Number(order.total) || 0,
+              orderedAt: order.orderedAt
+            };
+
+          }
+
+        } else {
+
+          // 注文前は元の見積商品を取得
+          const itemsResult = await pool.query(
+            `
+              SELECT
+                id,
+                product_code AS code,
+                size,
+                brand,
+                pattern,
+                price,
+                quantity AS qty
+              FROM estimate_items
+              WHERE estimate_id = $1
+              ORDER BY id
+            `,
+            [estimate.id]
+          );
+
+          estimate.items = itemsResult.rows.map(item => ({
+            id: Number(item.id),
+            code: item.code || "",
+            size: item.size || "",
+            brand: item.brand || "",
+            pattern: item.pattern || "",
+            price: Number(item.price) || 0,
+            qty: Number(item.qty) || 1
+          }));
+
+        }
+
+        return res.json({
           success: true,
           estimate
         });
@@ -116,7 +183,7 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
         console.error("注文選択データ取得エラー:", error);
 
-        res.status(500).json({
+        return res.status(500).json({
           success: false,
           message: "注文内容の取得に失敗しました"
         });
@@ -125,7 +192,6 @@ module.exports = function registerOrderSelectionApi(app, pool) {
 
     }
   );
-
 
   // お客様画面用：選択商品の注文確定
   app.post(
