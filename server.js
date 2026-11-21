@@ -2948,14 +2948,15 @@ app.put(
       // ==================================================
 
       const estimateResult =
-        await client.query(
-          `
-            SELECT id
-            FROM estimates
-            WHERE id = $1
-          `,
-          [estimateId]
-        );
+  await client.query(
+    `
+      SELECT id, status
+      FROM estimates
+      WHERE id = $1
+      FOR UPDATE
+    `,
+    [estimateId]
+  );
 
 
       if (
@@ -2975,7 +2976,22 @@ app.put(
         });
 
       }
+if (
+  estimateResult.rows[0].status === "ordered"
+) {
 
+  await client.query("ROLLBACK");
+
+  return res.status(409).json({
+
+    success: false,
+
+    message:
+      "注文済みの見積は編集できません"
+
+  });
+
+}
 
       // ==================================================
       // 現在の商品を削除
