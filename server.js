@@ -251,6 +251,7 @@ initDatabase()
       error
     );
   });
+     
 
 
 // ==================================================
@@ -517,8 +518,6 @@ app.get(
 
   }
 );
-
-
 // ==================================================
 // ブランド画像保存API
 // ==================================================
@@ -878,8 +877,6 @@ app.get(
 
   }
 );
-
-
 // ==================================================
 // 商品データ保存API
 // ==================================================
@@ -1162,9 +1159,7 @@ app.post(
         );
 
       }
-
-
-      // ==================================================
+            // ==================================================
       // お客様専用URL
       // ==================================================
 
@@ -1358,9 +1353,7 @@ app.get(
           FROM estimates
           ORDER BY created_at DESC
         `);
-
-
-      const itemsResult =
+            const itemsResult =
         await pool.query(`
           SELECT
             estimate_id,
@@ -1488,10 +1481,10 @@ app.get(
       const result =
         await pool.query(
           `
-          SELECT id
-          FROM estimates
-          WHERE access_token = $1
-          LIMIT 1
+            SELECT id
+            FROM estimates
+            WHERE access_token = $1
+            LIMIT 1
           `,
           [accessToken]
         );
@@ -1567,299 +1560,23 @@ app.get(
 
   }
 );
-
-
 // ==================================================
 // お客様専用URL
-// 注文確定API
+// 旧注文確定API（停止）
 // ==================================================
 
 app.post(
   "/api/order/:accessToken",
   async (req, res) => {
 
-    try {
+    return res.status(410).json({
 
-      const accessToken =
-        String(
-          req.params.accessToken || ""
-        ).trim();
+      success: false,
 
+      message:
+        "こちらの注文方法は終了しました。新しい注文選択ページをご利用ください。"
 
-      if (!accessToken) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          message:
-            "注文URLが正しくありません"
-
-        });
-
-      }
-
-
-      // ==================================================
-      // 注文対象の見積を取得
-      // ==================================================
-
-      const result =
-        await pool.query(
-          `
-          SELECT
-            id,
-            status
-          FROM estimates
-          WHERE access_token = $1
-          LIMIT 1
-          `,
-          [accessToken]
-        );
-
-
-      if (
-        result.rows.length === 0
-      ) {
-
-        return res.status(404).json({
-
-          success: false,
-
-          message:
-            "この注文URLは無効です"
-
-        });
-
-      }
-
-
-      const estimate =
-        result.rows[0];
-
-
-      // ==================================================
-      // 二重注文を防止
-      // ==================================================
-
-      if (
-        estimate.status === "ordered"
-      ) {
-
-        return res.status(409).json({
-
-          success: false,
-
-          message:
-            "この注文はすでに受け付けています"
-
-        });
-
-      }
-
-
-      // ==================================================
-      // 注文確定
-      // ==================================================
-
-      const orderedAt =
-        new Date();
-
-
-      const updateResult =
-        await pool.query(
-          `
-          UPDATE estimates
-          SET
-            status = 'ordered',
-            ordered_at = $1
-          WHERE id = $2
-          RETURNING
-            id,
-            access_token AS "accessToken",
-            line_user_id AS "lineUserId",
-            company,
-            phone,
-            email,
-            note,
-            delivery,
-            status,
-            created_at AS "createdAt",
-            delivery_updated_at AS "deliveryUpdatedAt",
-            ordered_at AS "orderedAt"
-          `,
-          [
-            orderedAt,
-            estimate.id
-          ]
-        );
-
-
-      const orderedEstimate =
-        updateResult.rows[0];
-
-
-      // ==================================================
-      // orders テーブルへ記録
-      // ==================================================
-
-      await pool.query(
-        `
-        INSERT INTO orders (
-          estimate_id,
-          status,
-          created_at
-        )
-        VALUES (
-          $1,
-          'ordered',
-          $2
-        )
-        `,
-        [
-          estimate.id,
-          orderedAt
-        ]
-      );
-
-
-      // ==================================================
-      // 管理者へLINE通知
-      // ==================================================
-
-      const adminUserId =
-        process.env.LINE_ADMIN_USER_ID;
-
-
-      const channelAccessToken =
-        process.env.LINE_CHANNEL_ACCESS_TOKEN;
-
-
-      if (
-        adminUserId &&
-        channelAccessToken
-      ) {
-
-        try {
-
-          const lineResponse =
-            await fetch(
-              "https://api.line.me/v2/bot/message/push",
-              {
-
-                method: "POST",
-
-                headers: {
-
-                  "Content-Type":
-                    "application/json",
-
-                  "Authorization":
-                    `Bearer ${channelAccessToken}`
-
-                },
-
-                body:
-                  JSON.stringify({
-
-                    to:
-                      adminUserId,
-
-                    messages: [
-
-                      {
-
-                        type:
-                          "text",
-
-                        text:
-                          `🛒 注文が入りました！\n\n` +
-                          `見積番号：${orderedEstimate.id}\n` +
-                          `会社名・氏名：${orderedEstimate.company}\n` +
-                          `電話番号：${orderedEstimate.phone}\n` +
-                          `メールアドレス：${orderedEstimate.email}\n` +
-                          `注文日時：${orderedAt.toLocaleString("ja-JP")}`
-
-                      }
-
-                    ]
-
-                  })
-
-              }
-            );
-
-
-          if (!lineResponse.ok) {
-
-            const lineError =
-              await lineResponse.text();
-
-
-            console.error(
-              "注文LINE通知エラー:",
-              lineResponse.status,
-              lineError
-            );
-
-          } else {
-
-            console.log(
-              "注文受付LINE通知を送信しました。"
-            );
-
-          }
-
-
-        } catch (lineError) {
-
-          console.error(
-            "注文LINE通知送信エラー:",
-            lineError
-          );
-
-        }
-
-      }
-
-
-      console.log(
-        "注文を受け付けました:",
-        orderedEstimate.id
-      );
-
-
-      res.json({
-
-        success: true,
-
-        message:
-          "注文を受け付けました",
-
-        estimate:
-          orderedEstimate
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "注文受付エラー:",
-        error
-      );
-
-
-      res.status(500).json({
-
-        success: false,
-
-        message:
-          "注文の受付に失敗しました"
-
-      });
-
-    }
+    });
 
   }
 );
@@ -1980,7 +1697,6 @@ app.delete(
   }
 );
 
-
 // ==================================================
 // 納期連絡を保存するAPI
 // ==================================================
@@ -2029,9 +1745,9 @@ app.patch(
               delivery = $1,
               delivery_updated_at = $2,
               status = CASE
-  WHEN status = 'ordered' THEN 'ordered'
-  ELSE 'estimate_ready'
-END
+                WHEN status = 'ordered' THEN 'ordered'
+                ELSE 'estimate_ready'
+              END
             WHERE id = $3
             RETURNING
               id,
@@ -2172,9 +1888,7 @@ async function getEstimateById(id) {
 
   const estimate =
     estimateResult.rows[0];
-
-
-  const itemsResult =
+    const itemsResult =
     await pool.query(
       `
         SELECT
@@ -2298,9 +2012,9 @@ app.post(
             delivery = $1,
             delivery_updated_at = CURRENT_TIMESTAMP,
             status = CASE
-  WHEN status = 'ordered' THEN 'ordered'
-  ELSE 'estimate_ready'
-END
+              WHEN status = 'ordered' THEN 'ordered'
+              ELSE 'estimate_ready'
+            END
           WHERE id = $2
         `,
         [
@@ -2314,9 +2028,10 @@ END
         delivery;
 
 
-     if (estimate.status !== "ordered") {
-  estimate.status = "estimate_ready";
-}
+      if (estimate.status !== "ordered") {
+        estimate.status = "estimate_ready";
+      }
+
 
       // ==================================================
       // PDFファイル
@@ -2464,9 +2179,7 @@ END
 
 
       doc.moveDown(2);
-
-
-      // ==================================================
+            // ==================================================
       // お見積内容
       // ==================================================
 
@@ -2709,9 +2422,7 @@ END
 
 
       doc.moveDown(2);
-
-
-      // ==================================================
+            // ==================================================
       // 税別表記
       // ==================================================
 
@@ -2870,8 +2581,6 @@ END
 
   }
 );
-
-
 // ==================================================
 // PDF公開
 // ==================================================
@@ -2954,15 +2663,15 @@ app.put(
       // ==================================================
 
       const estimateResult =
-  await client.query(
-    `
-      SELECT id, status
-      FROM estimates
-      WHERE id = $1
-      FOR UPDATE
-    `,
-    [estimateId]
-  );
+        await client.query(
+          `
+            SELECT id, status
+            FROM estimates
+            WHERE id = $1
+            FOR UPDATE
+          `,
+          [estimateId]
+        );
 
 
       if (
@@ -2982,22 +2691,26 @@ app.put(
         });
 
       }
-if (
-  estimateResult.rows[0].status === "ordered"
-) {
 
-  await client.query("ROLLBACK");
 
-  return res.status(409).json({
+      if (
+        estimateResult.rows[0].status === "ordered"
+      ) {
 
-    success: false,
+        await client.query("ROLLBACK");
 
-    message:
-      "注文済みの見積は編集できません"
 
-  });
+        return res.status(409).json({
 
-}
+          success: false,
+
+          message:
+            "注文済みの見積は編集できません"
+
+        });
+
+      }
+
 
       // ==================================================
       // 現在の商品を削除
@@ -3110,8 +2823,6 @@ if (
 
   }
 );
-
-
 // ==================================================
 // Excel商品をDBへ初回登録
 // ==================================================
@@ -3196,32 +2907,32 @@ function startServer() {
     PORT,
     () => {
 
-    console.log(
-      `Server running on port ${PORT}`
-    );
+      console.log(
+        `Server running on port ${PORT}`
+      );
 
 
-    console.log(
-      `Excel: ${EXCEL_FILE}`
-    );
+      console.log(
+        `Excel: ${EXCEL_FILE}`
+      );
 
 
-    console.log(
-      `商品シート: ${PRODUCT_SHEET}`
-    );
+      console.log(
+        `商品シート: ${PRODUCT_SHEET}`
+      );
 
 
-    console.log(
-      `PDF directory: ${PDF_DIR}`
-    );
+      console.log(
+        `PDF directory: ${PDF_DIR}`
+      );
 
 
-    console.log(
-      `Japanese font: ${
-        JAPANESE_FONT || "NOT FOUND"
-      }`
-    );
+      console.log(
+        `Japanese font: ${
+          JAPANESE_FONT || "NOT FOUND"
+        }`
+      );
 
-  }
-);
+    }
+  );
 }
