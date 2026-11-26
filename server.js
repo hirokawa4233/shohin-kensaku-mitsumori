@@ -2314,9 +2314,9 @@ END
         delivery;
 
 
-      estimate.status =
-        "estimate_ready";
-
+     if (estimate.status !== "ordered") {
+  estimate.status = "estimate_ready";
+}
 
       // ==================================================
       // PDFファイル
