@@ -229,6 +229,45 @@ header p {
 
 }
 
+
+/* プレビュー画面に合わせた商品選択UI */
+.item {
+  border: 1px solid #e0e5ec;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+.item-grid { gap: 12px; }
+.item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #2e8b57;
+}
+.item input[type="number"],
+.item input[type="text"] {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+}
+.item input:disabled {
+  background: #f1f3f6;
+  color: #9299a5;
+}
+.item input[type="text"] { width: 100%; }
+.item input[type="number"] { width: 100px; }
+.item label {
+  min-height: 28px;
+}
+@media (max-width: 700px) {
+  .item-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 450px) {
+  .item-grid { grid-template-columns: 1fr; }
+  .item { padding: 14px; }
+}
+
 </style>
 </head>
 
@@ -394,24 +433,6 @@ header p {
 
     </div>
 
-
-    <!-- 備考 -->
-
-    <div
-      id="note-card"
-      class="card hidden"
-    >
-
-      <div class="card-title">
-        📝 備考
-      </div>
-
-      <div
-        id="note"
-        class="value"
-      ></div>
-
-    </div>
 
 
     <!-- 注文 -->
@@ -930,32 +951,7 @@ async function loadEstimate() {
       );
 
     }
-
-
-    /* ------------------------------------
-       備考
-    ------------------------------------ */
-
-    if (
-      estimate.note
-    ) {
-
-      document.getElementById(
-        "note"
-      ).textContent =
-        estimate.note;
-
-
-      document.getElementById(
-        "note-card"
-      ).classList.remove(
-        "hidden"
-      );
-
-    }
-
-
-    /* ------------------------------------
+/* ------------------------------------
        すでに注文済みの場合
     ------------------------------------ */
 
