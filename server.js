@@ -2028,7 +2028,10 @@ app.patch(
             SET
               delivery = $1,
               delivery_updated_at = $2,
-              status = 'estimate_ready'
+              status = CASE
+  WHEN status = 'ordered' THEN 'ordered'
+  ELSE 'estimate_ready'
+END
             WHERE id = $3
             RETURNING
               id,
@@ -2294,7 +2297,10 @@ app.post(
           SET
             delivery = $1,
             delivery_updated_at = CURRENT_TIMESTAMP,
-            status = 'estimate_ready'
+            status = CASE
+  WHEN status = 'ordered' THEN 'ordered'
+  ELSE 'estimate_ready'
+END
           WHERE id = $2
         `,
         [
