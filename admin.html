@@ -937,13 +937,15 @@ async function loadEstimates() {
                     📄 御見積書PDFを作成
                   </button>
 
-                  <button
-                    class="delete-button"
-                    id="delete-button-${esc(id)}"
-                    onclick="deleteEstimate('${esc(id)}')"
-                  >
-                    🗑️ この見積を削除
-                  </button>
+                 ${estimate.status !== "ordered" ? `
+  <button
+    class="delete-button"
+    id="delete-button-${esc(id)}"
+    onclick="deleteEstimate('${esc(id)}')"
+  >
+    🗑️ この見積を削除
+  </button>
+` : ""}
 
                 </div>
 
