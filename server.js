@@ -1582,8 +1582,10 @@ app.post(
 );
 
 
+
 // ==================================================
 // 見積依頼削除API
+// 注文済みの見積は削除禁止
 // ==================================================
 
 app.delete(
@@ -1592,37 +1594,95 @@ app.delete(
 
     try {
 
-      const id =
-        Number(
-          req.params.id
-        );
+      const id = Number(req.params.id);
 
+      if (!Number.isSafeInteger(id) || id <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "見積番号が正しくありません"
+        });
+      }
 
-      const result =
-        await pool.query(
+      // 注文済みではない見積だけ削除
+      const result = await pool.query(
+        `
+          DELETE FROM estimates
+          WHERE id = $1
+            AND status <> 'ordered'
+          RETURNING id
+        `,
+        [id]
+      );
+
+      if (result.rowCount === 0) {
+
+        // 削除できなかった理由を確認
+        const check = await pool.query(
           `
-            DELETE FROM estimates
+            SELECT status
+            FROM estimates
             WHERE id = $1
-            RETURNING id
           `,
           [id]
         );
 
+        if (check.rowCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "指定された見積依頼が見つかりません"
+          });
+        }
 
-      if (
-        result.rowCount === 0
-      ) {
-
-        return res.status(404).json({
-
+        return res.status(409).json({
           success: false,
-
-          message:
-            "指定された見積依頼が見つかりません"
-
+          message: "注文済みの見積は削除できません"
         });
-
       }
+
+      // 作成済みPDFも削除
+      const pdfFileName = `御見積書_${id}.pdf`;
+
+      const pdfPath = path.join(
+        PDF_DIR,
+        pdfFileName
+      );
+
+      if (fs.existsSync(pdfPath)) {
+        fs.unlinkSync(pdfPath);
+
+        console.log(
+          "見積PDFを削除しました:",
+          pdfFileName
+        );
+      }
+
+      console.log(
+        "見積依頼を削除しました:",
+        id
+      );
+
+      res.json({
+        success: true,
+        message: "見積依頼を削除しました",
+        id
+      });
+
+    } catch (error) {
+
+      console.error(
+        "見積削除エラー:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "見積依頼の削除に失敗しました"
+      });
+
+    }
+
+  }
+);
 
 
       // ==================================================
